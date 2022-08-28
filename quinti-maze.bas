@@ -36,7 +36,7 @@
 235 NEXT : NEXT : NEXT
 240 X = INT ( RND (1) * 3) + 2:Y = INT( RND (1) * 3) + 2:A = INT ( RND(1) * 3) + 2
 245 RD = INT ( RND (1) * 6) + 1: ON RD GOTO 250,255,260,265,270,275
-250 A = 5:P1$ = LEFT$ (S$(X,A),(Y - 1) * 6):L = 29 - LEN (P1$):P2$ = RIGHT$(S$(X,A),L):S$(X,A) = P1$ + 110" + P2$: GOTO 280
+250 A = 5:P1$ = LEFT$ (S$(X,A),(Y - 1) * 6):L = 29 - LEN (P1$):P2$ = RIGHT$(S$(X,A),L):S$(X,A) = P1$ + "0" + P2$: GOTO 280
 255 A = 1:P1$ = LEFT$ (S$(X,A),(Y - 1) * 6 + 1):L = 29 - LEN (P1$):P2$ = RIGHT$ (S$(X,A),L):S$(X,A) = P1$ + "0" + P2$: GOTO 280
 260 Y = 5:P1$ = LEFT$ (S$(X,A),(Y - 1) * 6 + 3):L = 29 - LEN (P1$):P2$ = RIGHT$ (S$(X,A),L):S$(X,A) = P1$ + "0" + P2$: GOTO 280
 265 Y = 1:P1$ = LEFT$ (S$(X,A),(Y - 1) * 6 + 2):L = 29 - LEN (P1$):P2$ = RIGHT$ (S$(X,A),L):S$(X,A) = P1$ + "0" + P2$: GOTO 280
