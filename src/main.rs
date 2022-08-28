@@ -6,6 +6,10 @@ use embedded_graphics::{
 };
 use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, Window};
 
+mod maze;
+
+use crate::maze::{Coord, Maze};
+
 macro_rules! map_x_to_ratio {
     ($value:expr) => {
         $value / ORIGINAL_SCREEN_SIZE.width as f32
@@ -307,12 +311,26 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     display.clear(Rgb565::WHITE)?;
 
+    let maze = Maze::<5, 5, 5>::default();
+
+    let cell = maze.get_cell(&Coord::default());
+
     draw_room(&mut display)?;
-    draw_right_door(&mut display)?;
-    draw_left_door(&mut display)?;
-    draw_top_door(&mut display)?;
-    draw_bottom_door(&mut display)?;
-    draw_front_door(&mut display)?;
+    if cell.east {
+        draw_right_door(&mut display)?;
+    }
+    if cell.west {
+        draw_left_door(&mut display)?;
+    }
+    if cell.up {
+        draw_top_door(&mut display)?;
+    }
+    if cell.down {
+        draw_bottom_door(&mut display)?;
+    }
+    if cell.north {
+        draw_front_door(&mut display)?;
+    }
 
     let output_settings = OutputSettings::default();
     Window::new("Quinti-Maze", &output_settings).show_static(&display);
