@@ -43,15 +43,14 @@ pub struct Coord {
 }
 
 impl Coord {
-    #[allow(unused)]
     pub fn move_in_direction(&self, direction: Direction) -> Self {
         let deltas = match direction {
             Direction::North => (0, -1, 0),
-            Direction::South => (0, -1, 0),
-            Direction::East => (0, -1, 0),
-            Direction::West => (0, -1, 0),
-            Direction::Up => (0, -1, 0),
-            Direction::Down => (0, -1, 0),
+            Direction::South => (0, 1, 0),
+            Direction::West => (-1, 0, 0),
+            Direction::East => (1, 0, 0),
+            Direction::Up => (0, 0, 1),
+            Direction::Down => (0, 0, -1),
         };
         Self {
             x: self.x + deltas.0,
@@ -136,6 +135,16 @@ impl<const X: usize, const Y: usize, const Z: usize> Maze<X, Y, Z> {
     pub fn get_cell_mut(&mut self, coord: &Coord) -> &mut Cell {
         self.validate_coord(coord);
         &mut self.cells[coord.z as usize][coord.y as usize][coord.x as usize]
+    }
+
+    pub fn is_win(&self, coord: &Coord) -> bool {
+        if coord.x < 0 || coord.y < 0 || coord.z < 0 {
+            return true;
+        }
+        let dimensions = Self::dimensions();
+        coord.x > dimensions.0 as isize
+            || coord.y > dimensions.1 as isize
+            || coord.z > dimensions.2 as isize
     }
 }
 
