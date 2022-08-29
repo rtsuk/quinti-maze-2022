@@ -4,11 +4,11 @@ use embedded_graphics::{
     prelude::*,
     primitives::{Line, PrimitiveStyle},
 };
-use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, Window};
+use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, SimulatorEvent, Window};
 
 mod maze;
 
-use crate::maze::{Coord, Maze};
+use crate::maze::{Coord, Direction, MazeGenerator};
 
 macro_rules! map_x_to_ratio {
     ($value:expr) => {
@@ -311,29 +311,45 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     display.clear(Rgb565::WHITE)?;
 
-    let maze = Maze::<5, 5, 5>::default();
+    let mut generator = MazeGenerator::default();
+    generator.generate();
+    let maze = generator.take();
 
-    let cell = maze.get_cell(&Coord::default());
+    let cell = maze.get_cell(&Coord { x: 3, y: 3, z: 3 });
+    let facing = Direction::North;
 
     draw_room(&mut display)?;
-    if cell.east {
+    if cell.right(facing) {
         draw_right_door(&mut display)?;
     }
-    if cell.west {
+    if cell.left(facing) {
         draw_left_door(&mut display)?;
     }
-    if cell.up {
+    if cell.top() {
         draw_top_door(&mut display)?;
     }
-    if cell.down {
+    if cell.bottom() {
         draw_bottom_door(&mut display)?;
     }
-    if cell.north {
+    if cell.front(facing) {
         draw_front_door(&mut display)?;
     }
 
     let output_settings = OutputSettings::default();
-    Window::new("Quinti-Maze", &output_settings).show_static(&display);
+    let mut window = Window::new("Quinti-Maze", &output_settings);
+
+    'running: loop {
+        window.update(&display);
+
+        for event in window.events() {
+            match event {
+                SimulatorEvent::Quit => {
+                    break 'running;
+                }
+                _ => (),
+            }
+        }
+    }
 
     Ok(())
 }
