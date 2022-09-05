@@ -10,7 +10,7 @@ mod maze;
 use crate::{
     draw::{
         draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
-        draw_top_door, SCREEN_SIZE,
+        draw_top_door, draw_win, SCREEN_SIZE,
     },
     maze::{Coord, Direction, MazeGenerator, VisibleDoors},
 };
@@ -22,7 +22,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     generator.generate();
     let maze = generator.take();
 
-    let mut position = Coord { x: 3, y: 3, z: 3 };
+    let mut position = Coord { x: 0, y: 0, z: 0 };
     let mut facing = Direction::North;
     let mut show_position = false;
 
@@ -102,11 +102,24 @@ fn main() -> Result<(), core::convert::Infallible> {
                     Keycode::Slash => {
                         show_position = !show_position;
                     }
-                    _ => {
-                        //                        dbg!(event);
-                    }
+                    _ => {}
                 },
                 _ => (),
+            }
+        }
+    }
+
+    display.clear(Rgb565::BLACK)?;
+    draw_win(&mut display)?;
+    window.update(&display);
+
+    'win: loop {
+        for event in window.events() {
+            match event {
+                SimulatorEvent::Quit => {
+                    break 'win;
+                }
+                _ => {}
             }
         }
     }

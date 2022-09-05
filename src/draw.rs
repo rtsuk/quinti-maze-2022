@@ -364,3 +364,21 @@ where
 
     Ok(())
 }
+
+pub fn draw_win<D>(display: &mut D) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+    Text::with_alignment(
+        "You Win!",
+        Point::new(
+            (SCREEN_SIZE.width / 2) as i32,
+            (SCREEN_SIZE.height / 2) as i32,
+        ),
+        style,
+        Alignment::Center,
+    )
+    .draw(display)?;
+    Ok(())
+}

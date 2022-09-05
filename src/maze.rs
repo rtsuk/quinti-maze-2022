@@ -181,9 +181,9 @@ impl<const X: usize, const Y: usize, const Z: usize> Maze<X, Y, Z> {
             return true;
         }
         let dimensions = Self::dimensions();
-        coord.x > dimensions.0 as isize
-            || coord.y > dimensions.1 as isize
-            || coord.z > dimensions.2 as isize
+        coord.x >= dimensions.0 as isize
+            || coord.y >= dimensions.1 as isize
+            || coord.z >= dimensions.2 as isize
     }
 }
 
@@ -284,6 +284,7 @@ impl MazeGenerator {
                 self.cells.remove(index);
             }
         }
+        self.maze.cells[max_x - 1][max_z - 1][max_z - 1].remove_wall(&Direction::Up);
     }
 
     pub fn take(self) -> QuintiMaze {
