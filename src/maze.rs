@@ -25,6 +25,19 @@ impl Direction {
     }
 }
 
+impl From<Direction> for &'static str {
+    fn from(direction: Direction) -> Self {
+        match direction {
+            Direction::North => "North",
+            Direction::South => "South",
+            Direction::East => "East",
+            Direction::West => "West",
+            Direction::Up => "Up",
+            Direction::Down => "Down",
+        }
+    }
+}
+
 #[allow(unused)]
 #[derive(Debug, Clone, Copy)]
 pub enum VisibleDoors {
@@ -69,16 +82,26 @@ pub struct Cell {
 }
 
 impl Cell {
-    pub fn left(&self, _facing: Direction) -> bool {
-        self.doors[Direction::West as usize]
+    pub fn left(&self, facing: Direction) -> bool {
+        match facing {
+            Direction::East => self.doors[Direction::North as usize],
+            Direction::South => self.doors[Direction::East as usize],
+            Direction::West => self.doors[Direction::South as usize],
+            _ => self.doors[Direction::West as usize],
+        }
     }
 
-    pub fn front(&self, _facing: Direction) -> bool {
-        self.doors[Direction::North as usize]
+    pub fn front(&self, facing: Direction) -> bool {
+        self.doors[facing as usize]
     }
 
-    pub fn right(&self, _facing: Direction) -> bool {
-        self.doors[Direction::East as usize]
+    pub fn right(&self, facing: Direction) -> bool {
+        match facing {
+            Direction::East => self.doors[Direction::South as usize],
+            Direction::South => self.doors[Direction::West as usize],
+            Direction::West => self.doors[Direction::North as usize],
+            _ => self.doors[Direction::West as usize],
+        }
     }
 
     pub fn top(&self) -> bool {

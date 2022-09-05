@@ -1,7 +1,10 @@
+use crate::Direction;
 use embedded_graphics::{
+    mono_font::{ascii::FONT_10X20, MonoTextStyle},
     pixelcolor::Rgb565,
     prelude::*,
-    primitives::{Line, PrimitiveStyle},
+    primitives::{Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
+    text::{Alignment, Text},
 };
 
 macro_rules! map_x_to_ratio {
@@ -298,4 +301,39 @@ where
         Point::new(FD_BACK_RIGHT, FD_BACK_TOP),
     ];
     draw_lines(&FD_TOP_RIGHT, display)
+}
+
+pub fn draw_status<D>(display: &mut D, facing: Direction) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let style = PrimitiveStyleBuilder::new()
+        .fill_color(Rgb565::BLACK)
+        .build();
+
+    let status_top = FRONT_BOTTOM as u32;
+    let status_height = SCREEN_SIZE.height - status_top;
+
+    Rectangle::new(
+        Point::new(0, FRONT_BOTTOM),
+        Size::new(SCREEN_SIZE.width, status_height),
+    )
+    .into_styled(style)
+    .draw(display)?;
+
+    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+
+    // Create a text at position (20, 30) and draw it using the previously defined style
+    Text::with_alignment(
+        facing.into(),
+        Point::new(
+            (SCREEN_SIZE.width / 2) as i32,
+            (SCREEN_SIZE.height - status_height / 2 + 5) as i32,
+        ),
+        style,
+        Alignment::Center,
+    )
+    .draw(display)?;
+
+    Ok(())
 }

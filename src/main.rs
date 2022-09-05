@@ -9,7 +9,7 @@ mod maze;
 
 use crate::{
     draw::{
-        draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room,
+        draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
         draw_top_door, SCREEN_SIZE,
     },
     maze::{Coord, Direction, MazeGenerator},
@@ -23,7 +23,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let maze = generator.take();
 
     let mut position = Coord { x: 3, y: 3, z: 3 };
-    let facing = Direction::North;
+    let mut facing = Direction::North;
 
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
@@ -53,6 +53,8 @@ fn main() -> Result<(), core::convert::Infallible> {
         if cell.front(facing) {
             draw_front_door(&mut display)?;
         }
+
+        draw_status(&mut display, facing)?;
 
         window.update(&display);
 
@@ -87,7 +89,21 @@ fn main() -> Result<(), core::convert::Infallible> {
                             position = position.move_in_direction(Direction::Down);
                         }
                     }
-                    _ => (),
+                    Keycode::Up => {
+                        facing = Direction::North;
+                    }
+                    Keycode::Down => {
+                        facing = Direction::South;
+                    }
+                    Keycode::Left => {
+                        facing = Direction::West;
+                    }
+                    Keycode::Right => {
+                        facing = Direction::East;
+                    }
+                    _ => {
+                        //                        dbg!(event);
+                    }
                 },
                 _ => (),
             }
