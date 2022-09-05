@@ -93,17 +93,11 @@ fn main() -> Result<(), core::convert::Infallible> {
                             position = position.move_in_direction(Direction::Down);
                         }
                     }
-                    Keycode::Up => {
-                        facing = Direction::North;
-                    }
-                    Keycode::Down => {
-                        facing = Direction::South;
-                    }
                     Keycode::Left => {
-                        facing = Direction::West;
+                        facing = VisibleDoors::Left.direction(facing);
                     }
                     Keycode::Right => {
-                        facing = Direction::East;
+                        facing = VisibleDoors::Right.direction(facing);
                     }
                     Keycode::Slash => {
                         show_position = !show_position;

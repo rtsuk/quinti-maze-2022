@@ -63,7 +63,7 @@ impl VisibleDoors {
                 Direction::East => Direction::South,
                 Direction::South => Direction::West,
                 Direction::West => Direction::North,
-                _ => Direction::West,
+                _ => Direction::East,
             },
             Self::Forward => facing,
         }
