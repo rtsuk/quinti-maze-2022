@@ -48,6 +48,32 @@ pub enum VisibleDoors {
     Down,
 }
 
+impl VisibleDoors {
+    pub fn direction(&self, facing: Direction) -> Direction {
+        match self {
+            Self::Up => Direction::Up,
+            Self::Down => Direction::Down,
+            Self::Left => match facing {
+                Direction::East => Direction::North,
+                Direction::South => Direction::East,
+                Direction::West => Direction::South,
+                _ => Direction::West,
+            },
+            Self::Right => match facing {
+                Direction::East => Direction::South,
+                Direction::South => Direction::West,
+                Direction::West => Direction::North,
+                _ => Direction::West,
+            },
+            Self::Forward => facing,
+        }
+    }
+
+    pub fn direction_as_index(&self, facing: Direction) -> usize {
+        self.direction(facing) as usize
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Coord {
     pub x: isize,
@@ -83,25 +109,15 @@ pub struct Cell {
 
 impl Cell {
     pub fn left(&self, facing: Direction) -> bool {
-        match facing {
-            Direction::East => self.doors[Direction::North as usize],
-            Direction::South => self.doors[Direction::East as usize],
-            Direction::West => self.doors[Direction::South as usize],
-            _ => self.doors[Direction::West as usize],
-        }
+        self.doors[VisibleDoors::Left.direction_as_index(facing)]
     }
 
     pub fn front(&self, facing: Direction) -> bool {
-        self.doors[facing as usize]
+        self.doors[VisibleDoors::Forward.direction_as_index(facing)]
     }
 
     pub fn right(&self, facing: Direction) -> bool {
-        match facing {
-            Direction::East => self.doors[Direction::South as usize],
-            Direction::South => self.doors[Direction::West as usize],
-            Direction::West => self.doors[Direction::North as usize],
-            _ => self.doors[Direction::West as usize],
-        }
+        self.doors[VisibleDoors::Right.direction_as_index(facing)]
     }
 
     pub fn top(&self) -> bool {

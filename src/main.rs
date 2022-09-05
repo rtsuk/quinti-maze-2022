@@ -12,7 +12,7 @@ use crate::{
         draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
         draw_top_door, SCREEN_SIZE,
     },
-    maze::{Coord, Direction, MazeGenerator},
+    maze::{Coord, Direction, MazeGenerator, VisibleDoors},
 };
 
 fn main() -> Result<(), core::convert::Infallible> {
@@ -67,17 +67,20 @@ fn main() -> Result<(), core::convert::Infallible> {
                 SimulatorEvent::KeyDown { keycode, .. } => match keycode {
                     Keycode::W => {
                         if cell.front(facing) {
-                            position = position.move_in_direction(Direction::North);
+                            position =
+                                position.move_in_direction(VisibleDoors::Forward.direction(facing));
                         }
                     }
                     Keycode::D => {
                         if cell.right(facing) {
-                            position = position.move_in_direction(Direction::East);
+                            position =
+                                position.move_in_direction(VisibleDoors::Right.direction(facing));
                         }
                     }
                     Keycode::A => {
                         if cell.left(facing) {
-                            position = position.move_in_direction(Direction::West);
+                            position =
+                                position.move_in_direction(VisibleDoors::Left.direction(facing));
                         }
                     }
                     Keycode::E => {
