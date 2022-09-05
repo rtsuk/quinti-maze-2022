@@ -1,4 +1,5 @@
-use crate::Direction;
+use crate::{Coord, Direction};
+use core::fmt;
 use embedded_graphics::{
     mono_font::{ascii::FONT_10X20, MonoTextStyle},
     pixelcolor::Rgb565,
@@ -6,6 +7,7 @@ use embedded_graphics::{
     primitives::{Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
     text::{Alignment, Text},
 };
+use heapless::String;
 
 macro_rules! map_x_to_ratio {
     ($value:expr) => {
@@ -303,7 +305,11 @@ where
     draw_lines(&FD_TOP_RIGHT, display)
 }
 
-pub fn draw_status<D>(display: &mut D, facing: Direction) -> Result<(), D::Error>
+pub fn draw_status<D>(
+    display: &mut D,
+    facing: Direction,
+    position: Option<Coord>,
+) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
@@ -313,6 +319,7 @@ where
 
     let status_top = FRONT_BOTTOM as u32;
     let status_height = SCREEN_SIZE.height - status_top;
+    let status_center_v = (SCREEN_SIZE.height - status_height / 2 + 5) as i32;
 
     Rectangle::new(
         Point::new(0, FRONT_BOTTOM),
@@ -323,17 +330,37 @@ where
 
     let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
 
-    // Create a text at position (20, 30) and draw it using the previously defined style
     Text::with_alignment(
         facing.into(),
-        Point::new(
-            (SCREEN_SIZE.width / 2) as i32,
-            (SCREEN_SIZE.height - status_height / 2 + 5) as i32,
-        ),
+        Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
         style,
         Alignment::Center,
     )
     .draw(display)?;
+
+    Text::with_alignment(
+        "Time: 0",
+        Point::new(5, status_center_v),
+        style,
+        Alignment::Left,
+    )
+    .draw(display)?;
+
+    if let Some(position) = position {
+        let mut label = String::<12>::new();
+        fmt::write(
+            &mut label,
+            format_args!("{},{},{}", position.x, position.y, position.z),
+        )
+        .expect("format");
+        Text::with_alignment(
+            &label,
+            Point::new((SCREEN_SIZE.width - 5) as i32, status_center_v),
+            style,
+            Alignment::Right,
+        )
+        .draw(display)?;
+    }
 
     Ok(())
 }

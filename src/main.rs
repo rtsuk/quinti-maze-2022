@@ -24,6 +24,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     let mut position = Coord { x: 3, y: 3, z: 3 };
     let mut facing = Direction::North;
+    let mut show_position = false;
 
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
@@ -54,7 +55,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             draw_front_door(&mut display)?;
         }
 
-        draw_status(&mut display, facing)?;
+        draw_status(&mut display, facing, show_position.then_some(position))?;
 
         window.update(&display);
 
@@ -100,6 +101,9 @@ fn main() -> Result<(), core::convert::Infallible> {
                     }
                     Keycode::Right => {
                         facing = Direction::East;
+                    }
+                    Keycode::Slash => {
+                        show_position = !show_position;
                     }
                     _ => {
                         //                        dbg!(event);
