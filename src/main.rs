@@ -29,7 +29,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
 
-    'running: loop {
+    loop {
         display.clear(Rgb565::WHITE)?;
 
         if maze.is_win(&position) {
@@ -62,7 +62,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         for event in window.events() {
             match event {
                 SimulatorEvent::Quit => {
-                    break 'running;
+                    return Ok(());
                 }
                 SimulatorEvent::KeyDown { keycode, .. } => match keycode {
                     Keycode::W => {
