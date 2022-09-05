@@ -12,19 +12,20 @@ use crate::{
         draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
         draw_top_door, draw_win, SCREEN_SIZE,
     },
-    maze::{Coord, Direction, MazeGenerator, VisibleDoors},
+    maze::{find_path_to_exit, Coord, Direction, MazeGenerator, VisibleDoors},
 };
 
 fn main() -> Result<(), core::convert::Infallible> {
     let mut display = SimulatorDisplay::<Rgb565>::new(SCREEN_SIZE);
 
     let mut generator = MazeGenerator::default();
-    generator.generate();
+    generator.generate(Some(13));
     let maze = generator.take();
 
     let mut position = Coord { x: 0, y: 0, z: 0 };
     let mut facing = Direction::North;
     let mut show_position = false;
+    let mut direction_hint = None;
 
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
@@ -55,7 +56,12 @@ fn main() -> Result<(), core::convert::Infallible> {
             draw_front_door(&mut display)?;
         }
 
-        draw_status(&mut display, facing, show_position.then_some(position))?;
+        draw_status(
+            &mut display,
+            facing,
+            show_position.then_some(position),
+            direction_hint,
+        )?;
 
         window.update(&display);
 
@@ -67,29 +73,34 @@ fn main() -> Result<(), core::convert::Infallible> {
                 SimulatorEvent::KeyDown { keycode, .. } => match keycode {
                     Keycode::W => {
                         if cell.front(facing) {
+                            direction_hint = None;
                             position =
                                 position.move_in_direction(VisibleDoors::Forward.direction(facing));
                         }
                     }
                     Keycode::D => {
                         if cell.right(facing) {
+                            direction_hint = None;
                             position =
                                 position.move_in_direction(VisibleDoors::Right.direction(facing));
                         }
                     }
                     Keycode::A => {
                         if cell.left(facing) {
+                            direction_hint = None;
                             position =
                                 position.move_in_direction(VisibleDoors::Left.direction(facing));
                         }
                     }
                     Keycode::E => {
                         if cell.top() {
+                            direction_hint = None;
                             position = position.move_in_direction(Direction::Up);
                         }
                     }
                     Keycode::Q => {
                         if cell.bottom() {
+                            direction_hint = None;
                             position = position.move_in_direction(Direction::Down);
                         }
                     }
@@ -101,6 +112,14 @@ fn main() -> Result<(), core::convert::Infallible> {
                     }
                     Keycode::Slash => {
                         show_position = !show_position;
+                    }
+                    Keycode::Equals => {
+                        let (_found, mut path) = find_path_to_exit(&maze, position);
+                        let _ = path.pop();
+                        let next_position = path.pop();
+                        if let Some(next_position) = next_position {
+                            direction_hint = Some(position.direction_to(next_position));
+                        }
                     }
                     _ => {}
                 },
@@ -115,11 +134,8 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     'win: loop {
         for event in window.events() {
-            match event {
-                SimulatorEvent::Quit => {
-                    break 'win;
-                }
-                _ => {}
+            if event == SimulatorEvent::Quit {
+                break 'win;
             }
         }
     }

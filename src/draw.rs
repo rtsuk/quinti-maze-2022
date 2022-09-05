@@ -309,6 +309,7 @@ pub fn draw_status<D>(
     display: &mut D,
     facing: Direction,
     position: Option<Coord>,
+    hint: Option<Direction>,
 ) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
@@ -330,13 +331,27 @@ where
 
     let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
 
-    Text::with_alignment(
-        facing.into(),
-        Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
-        style,
-        Alignment::Center,
-    )
-    .draw(display)?;
+    if let Some(hint) = hint {
+        let mut label = String::<32>::new();
+        let facing_str: &str = facing.into();
+        let hint_str: &str = hint.into();
+        fmt::write(&mut label, format_args!("{} [{}]", facing_str, hint_str)).expect("write");
+        Text::with_alignment(
+            &label,
+            Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
+            style,
+            Alignment::Center,
+        )
+        .draw(display)?;
+    } else {
+        Text::with_alignment(
+            facing.into(),
+            Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
+            style,
+            Alignment::Center,
+        )
+        .draw(display)?;
+    }
 
     Text::with_alignment(
         "Time: 0",

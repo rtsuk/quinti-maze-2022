@@ -97,6 +97,34 @@ impl Coord {
             z: self.z + deltas.2,
         }
     }
+
+    pub fn direction_to(&self, target: Self) -> Direction {
+        let delta_x = self.x - target.x;
+        if delta_x != 0 {
+            return if delta_x < 0 {
+                Direction::East
+            } else {
+                Direction::West
+            };
+        }
+        let delta_y = self.y - target.y;
+        if delta_y != 0 {
+            return if delta_y < 0 {
+                Direction::South
+            } else {
+                Direction::North
+            };
+        }
+        let delta_z = self.z - target.z;
+        if delta_z != 0 {
+            return if delta_z < 0 {
+                Direction::Up
+            } else {
+                Direction::Down
+            };
+        }
+        panic!("impossible direction");
+    }
 }
 
 type Doors = [bool; 6];
@@ -108,6 +136,10 @@ pub struct Cell {
 }
 
 impl Cell {
+    pub fn has_door(&self, direction: Direction) -> bool {
+        self.doors[direction as usize]
+    }
+
     pub fn left(&self, facing: Direction) -> bool {
         self.doors[VisibleDoors::Left.direction_as_index(facing)]
     }
@@ -239,8 +271,8 @@ impl MazeGenerator {
         Some(next)
     }
 
-    pub fn generate(&mut self) {
-        let mut rng = ChaChaRng::seed_from_u64(12);
+    pub fn generate(&mut self, seed: Option<u64>) {
+        let mut rng = ChaChaRng::seed_from_u64(seed.unwrap_or(12));
         let (max_x, max_y, max_z) = QuintiMaze::dimensions();
         let x = rng.gen_range(0..max_x) as isize;
         let y = rng.gen_range(0..max_y) as isize;
@@ -292,6 +324,49 @@ impl MazeGenerator {
     }
 }
 
+pub type SolutionPath = Vec<Coord, CELL_COUNT>;
+
+fn find_exit(
+    maze: &QuintiMaze,
+    prior_location: Option<Coord>,
+    location: Coord,
+    result: &mut SolutionPath,
+) -> bool {
+    for direction in [
+        Direction::Up,
+        Direction::Down,
+        Direction::West,
+        Direction::East,
+        Direction::South,
+        Direction::North,
+    ] {
+        let cell = maze.get_cell(&location);
+        if cell.has_door(direction) {
+            let new_location = location.move_in_direction(direction);
+            if maze.is_win(&new_location) {
+                result.push(new_location).expect("push");
+                result.push(location).expect("push");
+                return true;
+            }
+            if Some(new_location) != prior_location
+                && find_exit(maze, Some(location), new_location, result)
+            {
+                result.push(location).expect("push");
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub fn find_path_to_exit(maze: &QuintiMaze, starting_position: Coord) -> (bool, SolutionPath) {
+    let mut vec = SolutionPath::new();
+
+    let result = find_exit(maze, None, starting_position, &mut vec);
+
+    (result, vec)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -300,6 +375,35 @@ mod test {
     fn test_generate() {
         let mut generator = MazeGenerator::default();
 
-        generator.generate();
+        generator.generate(None);
+    }
+
+    #[test]
+    fn test_solve() {
+        let mut generator = MazeGenerator::default();
+
+        generator.generate(None);
+
+        let maze = generator.take();
+
+        let (found, mut path) = find_path_to_exit(&maze, Coord::default());
+
+        assert!(found);
+        assert_eq!(path.len(), 14);
+        assert_eq!(path.pop(), Some(Coord { x: 0, y: 0, z: 0 }));
+        assert_eq!(path[0], Coord { x: 4, y: 4, z: 5 });
+
+        let mut generator = MazeGenerator::default();
+
+        generator.generate(Some(13));
+
+        let maze = generator.take();
+
+        let (found, mut path) = find_path_to_exit(&maze, Coord::default());
+
+        assert!(found);
+        assert_eq!(path.len(), 18);
+        assert_eq!(path.pop(), Some(Coord { x: 0, y: 0, z: 0 }));
+        assert_eq!(path[0], Coord { x: 4, y: 4, z: 5 });
     }
 }
