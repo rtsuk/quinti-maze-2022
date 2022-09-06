@@ -1,7 +1,7 @@
 use crate::{Coord, Direction};
 use core::fmt;
 use embedded_graphics::{
-    mono_font::{ascii::FONT_10X20, MonoTextStyle},
+    mono_font::{ascii::FONT_8X13_BOLD, MonoTextStyle},
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
@@ -310,6 +310,7 @@ pub fn draw_status<D>(
     facing: Direction,
     position: Option<Coord>,
     hint: Option<Direction>,
+    elapsed: u64,
 ) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
@@ -329,13 +330,13 @@ where
     .into_styled(style)
     .draw(display)?;
 
-    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+    let style = MonoTextStyle::new(&FONT_8X13_BOLD, Rgb565::WHITE);
 
     if let Some(hint) = hint {
         let mut label = String::<32>::new();
         let facing_str: &str = facing.into();
         let hint_str: &str = hint.into();
-        fmt::write(&mut label, format_args!("{} [{}]", facing_str, hint_str)).expect("write");
+        fmt::write(&mut label, format_args!("{}[{}]", facing_str, hint_str)).expect("write");
         Text::with_alignment(
             &label,
             Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
@@ -353,8 +354,15 @@ where
         .draw(display)?;
     }
 
+    let mut time_label = String::<32>::new();
+    let seconds = (elapsed + 999) / 1000;
+    fmt::write(
+        &mut time_label,
+        format_args!("Time: {:2}:{:02}", seconds / 60, seconds % 60),
+    )
+    .expect("write");
     Text::with_alignment(
-        "Time: 0",
+        &time_label,
         Point::new(5, status_center_v),
         style,
         Alignment::Left,
@@ -384,7 +392,7 @@ pub fn draw_win<D>(display: &mut D) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
+    let style = MonoTextStyle::new(&FONT_8X13_BOLD, Rgb565::WHITE);
     Text::with_alignment(
         "You Win!",
         Point::new(

@@ -6,6 +6,7 @@ use embedded_graphics_simulator::{
 
 mod draw;
 mod maze;
+mod time;
 
 use crate::{
     draw::{
@@ -13,6 +14,7 @@ use crate::{
         draw_top_door, draw_win, SCREEN_SIZE,
     },
     maze::{find_path_to_exit, Coord, Direction, MazeGenerator, VisibleDoors},
+    time::Timer,
 };
 
 fn main() -> Result<(), core::convert::Infallible> {
@@ -21,6 +23,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut generator = MazeGenerator::default();
     generator.generate(Some(13));
     let maze = generator.take();
+    let timer = Timer::default();
 
     let mut position = Coord { x: 0, y: 0, z: 0 };
     let mut facing = Direction::North;
@@ -61,6 +64,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             facing,
             show_position.then_some(position),
             direction_hint,
+            timer.elapsed(),
         )?;
 
         window.update(&display);
