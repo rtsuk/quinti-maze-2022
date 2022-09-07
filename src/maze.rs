@@ -219,8 +219,8 @@ impl<const X: usize, const Y: usize, const Z: usize> Maze<X, Y, Z> {
     }
 }
 
-type QuintiMaze = Maze<5, 5, 5>;
-const CELL_COUNT: usize = QuintiMaze::cell_count();
+pub type QuintiMaze = Maze<5, 5, 5>;
+pub const CELL_COUNT: usize = QuintiMaze::cell_count();
 
 #[derive(Default)]
 pub struct MazeGenerator {
