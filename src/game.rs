@@ -3,8 +3,7 @@ use crate::{
         draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
         draw_top_door, draw_win,
     },
-    maze::{find_path_to_exit, QuintiMaze, VisibleDoors},
-    Coord, Direction,
+    maze::{find_path_to_exit, Coord, Direction, QuintiMaze, VisibleDoors},
 };
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 

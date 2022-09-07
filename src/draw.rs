@@ -1,4 +1,4 @@
-use crate::{Coord, Direction};
+use crate::maze::{Coord, Direction};
 use core::fmt;
 use embedded_graphics::{
     mono_font::{ascii::FONT_8X13_BOLD, MonoTextStyle},

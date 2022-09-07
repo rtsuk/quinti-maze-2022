@@ -3,16 +3,10 @@ use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics_simulator::{
     sdl2::Keycode, OutputSettings, SimulatorDisplay, SimulatorEvent, Window,
 };
-
-mod draw;
-mod game;
-mod maze;
-mod time;
-
-use crate::{
+use quinti_maze::{
     draw::SCREEN_SIZE,
     game::Game,
-    maze::{Coord, Direction, MazeGenerator, VisibleDoors},
+    maze::{MazeGenerator, VisibleDoors},
     time::Timer,
 };
 
