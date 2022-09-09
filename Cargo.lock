@@ -126,6 +126,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "byte-slice-cast"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0a5e3906bcbf133e33c1d4d95afc664ad37fbdb9f6568d8043e7ea8c27d93d3"
+
+[[package]]
 name = "bytemuck"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -193,6 +199,34 @@ checksum = "f0f6f3e36f203cfedbc78b357fb28730aa2c6dc1ab060ee5c2405e843988d3c7"
 dependencies = [
  "proc-macro2",
  "quote",
+ "syn",
+]
+
+[[package]]
+name = "cortex-m-rtic"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6b82f1c39acd6c3a35c2013b6110c20f5bc534522791fabadeed49ccada2dce"
+dependencies = [
+ "bare-metal 1.0.0",
+ "cortex-m",
+ "cortex-m-rtic-macros",
+ "heapless",
+ "rtic-core",
+ "rtic-monotonic",
+ "version_check",
+]
+
+[[package]]
+name = "cortex-m-rtic-macros"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e8e9645ef54bec1cf70ac33e9bf9566e6507ab5b41ae6baf3735662194e8607"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "rtic-syntax",
  "syn",
 ]
 
@@ -285,9 +319,35 @@ dependencies = [
 name = "device"
 version = "0.1.0"
 dependencies = [
+ "cortex-m",
+ "cortex-m-rtic",
+ "display-interface-spi",
+ "embedded-graphics",
+ "embedded-hal",
  "feather_m4",
+ "ili9341",
  "panic-semihosting",
+ "rtic-core",
+ "rtic-monotonic",
  "rtt-target",
+ "systick-monotonic",
+]
+
+[[package]]
+name = "display-interface"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7517c040926d7b02b111884aa089177db80878533127f7c1b480d852c5fb4112"
+
+[[package]]
+name = "display-interface-spi"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "489378ad054862146fbd1f09f51d585ccbe4bd1e2feadcda2a13ac33f840e1a5"
+dependencies = [
+ "byte-slice-cast",
+ "display-interface",
+ "embedded-hal",
 ]
 
 [[package]]
@@ -367,6 +427,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 
 [[package]]
+name = "fugit"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ab17bb279def6720d058cb6c052249938e7f99260ab534879281a95367a87e5"
+dependencies = [
+ "gcd",
+]
+
+[[package]]
+name = "gcd"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f37978dab2ca789938a83b2f8bc1ef32db6633af9051a6cd409eff72cbaaa79a"
+dependencies = [
+ "paste",
+]
+
+[[package]]
 name = "gif"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -384,6 +462,12 @@ checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
 dependencies = [
  "byteorder",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "heapless"
@@ -409,6 +493,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ili9341"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52897a923ee65051ae7da0f0b3d326c08d3b0998aa59346dc9a856e3f137c0a9"
+dependencies = [
+ "display-interface",
+ "embedded-graphics-core",
+ "embedded-hal",
+]
+
+[[package]]
 name = "image"
 version = "0.23.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -425,6 +520,16 @@ dependencies = [
  "png",
  "scoped_threadpool",
  "tiff",
+]
+
+[[package]]
+name = "indexmap"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
+dependencies = [
+ "autocfg 1.1.0",
+ "hashbrown",
 ]
 
 [[package]]
@@ -635,6 +740,30 @@ name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -870,6 +999,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtic-core"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9369355b04d06a3780ec0f51ea2d225624db777acbc60abd8ca4832da5c1a42"
+
+[[package]]
+name = "rtic-monotonic"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb8b0b822d1a366470b9cea83a1d4e788392db763539dc4ba022bcc787fece82"
+
+[[package]]
+name = "rtic-syntax"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ad3ae243dd8d0a1b064615f664d4fa7e63929939074c564cbe5efdc4c503065"
+dependencies = [
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "rtt-target"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1002,6 +1155,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "systick-monotonic"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e71d8e4587d8f434b88b9aef901987f46164df813a3a1d6bdf3a58debf67f0"
+dependencies = [
+ "cortex-m",
+ "fugit",
+ "rtic-monotonic",
+]
+
+[[package]]
 name = "tiff"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1035,6 +1199,12 @@ name = "vcell"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77439c1b53d2303b20d9459b1ade71a83c716e3f9c34f3228c00e6f185d6c002"
+
+[[package]]
+name = "version_check"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "void"
