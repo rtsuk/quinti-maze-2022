@@ -135,7 +135,7 @@ mod app {
     #[task(local = [game, lcd, red_led])]
     fn blink(cx: blink::Context) {
         let time = monotonic_millis();
-        if let Err(e) =  cx.local.game.draw(cx.local.lcd, time) {
+        if let Err(e) = cx.local.game.draw(cx.local.lcd, time) {
             rprintln!("err = {:?}", e);
         }
         cx.local.red_led.toggle().unwrap();
