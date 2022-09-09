@@ -4,3 +4,8 @@ members = [
     "quinti-maze",
     "sim",
 ]
+
+[profile.release]
+debug = true
+opt-level = "s"
+lto = true

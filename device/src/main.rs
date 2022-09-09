@@ -15,11 +15,12 @@ mod app {
     use bsp::{hal, pin_alias};
     use display_interface_spi::SPIInterface;
     use hal::clock::GenericClockController;
+    use hal::gpio::Pin;
     use hal::pac::Peripherals;
     use hal::prelude::*;
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
     use quinti_maze::{game::Game, maze::MazeGenerator};
-    use rtt_target::rtt_init_print;
+    use rtt_target::{rprintln, rtt_init_print};
     use systick_monotonic::*;
 
     /// Worlds worst delay function.
@@ -45,9 +46,23 @@ mod app {
         }
     }
 
+    fn monotonic_millis() -> u64 {
+        app::monotonics::now()
+            .duration_since_epoch()
+            .to_millis()
+            .try_into()
+            .unwrap_or(0)
+    }
+
+    type LcdCsPin = Pin<hal::gpio::PA20, hal::gpio::Output<hal::gpio::PushPull>>;
+    type LcdDcPin = Pin<hal::gpio::PA19, hal::gpio::Output<hal::gpio::PushPull>>;
+    type LcdResetPin = Pin<hal::gpio::PA22, hal::gpio::Output<hal::gpio::PushPull>>;
+
     #[local]
     struct Local {
         red_led: bsp::RedLed,
+        game: Game,
+        lcd: Ili9341<SPIInterface<bsp::Spi, LcdCsPin, LcdDcPin>, LcdResetPin>,
     }
 
     #[shared]
@@ -61,6 +76,8 @@ mod app {
         rtt_init_print!();
 
         delay_ms(100);
+
+        let _ = monotonic_millis();
 
         let mono = Systick::new(cx.core.SYST, 120_000_000);
         let mut peripherals: Peripherals = cx.device;
@@ -87,7 +104,7 @@ mod app {
         blink::spawn().unwrap();
 
         let sercom = peripherals.SERCOM1;
-        let spi = bsp::spi_master(&mut clocks, 16.mhz(), sercom, mclk, sck, mosi, miso);
+        let spi = bsp::spi_master(&mut clocks, 8.mhz(), sercom, mclk, sck, mosi, miso);
         let spi_iface = SPIInterface::new(spi, lcd_dc, lcd_cs);
         let reset_pin = pins.d12.into_push_pull_output();
 
@@ -108,11 +125,19 @@ mod app {
 
         game.draw(&mut lcd, 0).expect("draw");
 
-        (Shared {}, Local { red_led }, init::Monotonics(mono))
+        (
+            Shared {},
+            Local { red_led, game, lcd },
+            init::Monotonics(mono),
+        )
     }
 
-    #[task(local = [red_led])]
+    #[task(local = [game, lcd, red_led])]
     fn blink(cx: blink::Context) {
+        let time = monotonic_millis();
+        if let Err(e) =  cx.local.game.draw(cx.local.lcd, time) {
+            rprintln!("err = {:?}", e);
+        }
         cx.local.red_led.toggle().unwrap();
         blink::spawn_after(500.millis()).ok();
     }
