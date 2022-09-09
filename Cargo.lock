@@ -327,6 +327,7 @@ dependencies = [
  "feather_m4",
  "ili9341",
  "panic-semihosting",
+ "quinti-maze",
  "rtic-core",
  "rtic-monotonic",
  "rtt-target",
@@ -779,7 +780,6 @@ name = "quinti-maze"
 version = "0.1.0"
 dependencies = [
  "embedded-graphics",
- "embedded-graphics-simulator",
  "heapless",
  "rand 0.8.5",
  "rand_chacha 0.3.1",

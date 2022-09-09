@@ -14,16 +14,11 @@ mod app {
     use super::*;
     use bsp::{hal, pin_alias};
     use display_interface_spi::SPIInterface;
-    use embedded_graphics::{
-        mono_font::{ascii::FONT_6X10, MonoTextStyle},
-        pixelcolor::Rgb565,
-        prelude::*,
-        text::{Alignment, Text},
-    };
     use hal::clock::GenericClockController;
     use hal::pac::Peripherals;
     use hal::prelude::*;
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
+    use quinti_maze::{game::Game, maze::MazeGenerator};
     use rtt_target::rtt_init_print;
     use systick_monotonic::*;
 
@@ -105,18 +100,13 @@ mod app {
         )
         .unwrap();
 
-        lcd.clear(Rgb565::BLUE).expect("clear");
+        let mut generator = MazeGenerator::default();
+        generator.generate(Some(13));
+        let maze = generator.take();
 
-        let style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
+        let game = Game::new(maze);
 
-        Text::with_alignment(
-            "First line\nSecond line",
-            Point::new(160, 110),
-            style,
-            Alignment::Center,
-        )
-        .draw(&mut lcd)
-        .unwrap();
+        game.draw(&mut lcd, 0).expect("draw");
 
         (Shared {}, Local { red_led }, init::Monotonics(mono))
     }
