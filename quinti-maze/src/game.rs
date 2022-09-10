@@ -32,7 +32,8 @@ impl Game {
     where
         D: DrawTarget<Color = Rgb565>,
     {
-        if self.needs_full_draw {
+        let needs_full_draw = self.needs_full_draw;
+        if needs_full_draw {
             display.clear(Rgb565::WHITE)?;
 
             let cell = self.maze.get_cell(&self.position);
@@ -41,19 +42,19 @@ impl Game {
             if cell.right(self.facing) {
                 draw_right_door(display)?;
             }
-			
+
             if cell.left(self.facing) {
                 draw_left_door(display)?;
             }
-			
+
             if cell.top() {
                 draw_top_door(display)?;
             }
-			
+
             if cell.bottom() {
                 draw_bottom_door(display)?;
             }
-			
+
             if cell.front(self.facing) {
                 draw_front_door(display)?;
             }
@@ -67,6 +68,7 @@ impl Game {
             self.show_position.then_some(self.position),
             self.direction_hint,
             elapsed,
+            needs_full_draw,
         )?;
 
         Ok(())
@@ -86,18 +88,18 @@ impl Game {
         if self.position != old_position {
             self.direction_hint = None;
         }
-		
-		self.needs_full_draw = true;
+
+        self.needs_full_draw = true;
     }
 
     pub fn turn_left(&mut self) {
         self.facing = VisibleDoors::Left.direction(self.facing);
-		self.needs_full_draw = true;
+        self.needs_full_draw = true;
     }
 
     pub fn turn_right(&mut self) {
         self.facing = VisibleDoors::Right.direction(self.facing);
-		self.needs_full_draw = true;
+        self.needs_full_draw = true;
     }
 
     pub fn toggle_show_position(&mut self) {

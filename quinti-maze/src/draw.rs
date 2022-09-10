@@ -1,7 +1,7 @@
 use crate::maze::{Coord, Direction};
 use core::fmt;
 use embedded_graphics::{
-    mono_font::{ascii::FONT_8X13_BOLD, MonoTextStyle},
+    mono_font::{ascii::FONT_8X13_BOLD, MonoTextStyle, MonoTextStyleBuilder},
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle},
@@ -311,26 +311,33 @@ pub fn draw_status<D>(
     position: Option<Coord>,
     hint: Option<Direction>,
     elapsed: u64,
+    clear: bool,
 ) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    let style = PrimitiveStyleBuilder::new()
-        .fill_color(Rgb565::BLACK)
-        .build();
-
     let status_top = FRONT_BOTTOM as u32;
     let status_height = SCREEN_SIZE.height - status_top;
     let status_center_v = (SCREEN_SIZE.height - status_height / 2 + 5) as i32;
 
-    Rectangle::new(
-        Point::new(0, FRONT_BOTTOM),
-        Size::new(SCREEN_SIZE.width, status_height),
-    )
-    .into_styled(style)
-    .draw(display)?;
+    if clear {
+        let style = PrimitiveStyleBuilder::new()
+            .fill_color(Rgb565::BLACK)
+            .build();
 
-    let style = MonoTextStyle::new(&FONT_8X13_BOLD, Rgb565::WHITE);
+        Rectangle::new(
+            Point::new(0, FRONT_BOTTOM),
+            Size::new(SCREEN_SIZE.width, status_height),
+        )
+        .into_styled(style)
+        .draw(display)?;
+    }
+
+    let style = MonoTextStyleBuilder::new()
+        .font(&FONT_8X13_BOLD)
+        .text_color(Rgb565::WHITE)
+        .background_color(Rgb565::BLACK)
+        .build();
 
     if let Some(hint) = hint {
         let mut label = String::<32>::new();
