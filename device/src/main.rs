@@ -4,6 +4,22 @@
 //! figure as the "sleeping_timer_rtc" example.
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
+
+extern crate alloc;
+
+use alloc::{alloc::Layout, sync::Arc};
+use alloc_cortex_m::CortexMHeap;
+
+#[global_allocator]
+static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+#[cfg(not(target_os = "macos"))]
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+    #[allow(clippy::empty_loop)]
+    loop {}
+}
 
 use feather_m4 as bsp;
 
@@ -21,7 +37,29 @@ mod app {
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
     use quinti_maze::{game::Game, maze::MazeGenerator};
     use rtt_target::{rprintln, rtt_init_print};
+    use spin::Mutex;
     use systick_monotonic::*;
+
+    #[derive(Clone)]
+    pub struct LcdProxy {
+        spi: Arc<Mutex<bsp::Spi>>,
+    }
+
+    impl LcdProxy {
+        pub fn new(spi: bsp::Spi) -> Self {
+            Self {
+                spi: Arc::new(Mutex::new(spi)),
+            }
+        }
+    }
+
+    impl embedded_hal::blocking::spi::Write<u8> for LcdProxy {
+        type Error = hal::sercom::spi::Error;
+
+        fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
+            self.spi.lock().write(words)
+        }
+    }
 
     /// Worlds worst delay function.
     #[inline(always)]
@@ -47,11 +85,7 @@ mod app {
     }
 
     fn monotonic_millis() -> u64 {
-        app::monotonics::now()
-            .duration_since_epoch()
-            .to_millis()
-            .try_into()
-            .unwrap_or(0)
+        app::monotonics::now().duration_since_epoch().to_millis()
     }
 
     type LcdCsPin = Pin<hal::gpio::PA20, hal::gpio::Output<hal::gpio::PushPull>>;
@@ -62,7 +96,7 @@ mod app {
     struct Local {
         red_led: bsp::RedLed,
         game: Game,
-        lcd: Ili9341<SPIInterface<bsp::Spi, LcdCsPin, LcdDcPin>, LcdResetPin>,
+        lcd: Ili9341<SPIInterface<LcdProxy, LcdCsPin, LcdDcPin>, LcdResetPin>,
     }
 
     #[shared]
@@ -74,6 +108,13 @@ mod app {
     #[init]
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         rtt_init_print!();
+
+        {
+            use core::mem::MaybeUninit;
+            const HEAP_SIZE: usize = 1024;
+            static mut HEAP: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+            unsafe { ALLOCATOR.init(HEAP.as_ptr() as usize, HEAP_SIZE) }
+        }
 
         delay_ms(100);
 
@@ -105,7 +146,8 @@ mod app {
 
         let sercom = peripherals.SERCOM1;
         let spi = bsp::spi_master(&mut clocks, 8.mhz(), sercom, mclk, sck, mosi, miso);
-        let spi_iface = SPIInterface::new(spi, lcd_dc, lcd_cs);
+        let lcd_proxy = LcdProxy::new(spi);
+        let spi_iface = SPIInterface::new(lcd_proxy, lcd_dc, lcd_cs);
         let reset_pin = pins.d12.into_push_pull_output();
 
         let mut lcd = Ili9341::new(
