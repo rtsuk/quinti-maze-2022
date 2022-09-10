@@ -121,7 +121,7 @@ mod app {
         generator.generate(Some(13));
         let maze = generator.take();
 
-        let game = Game::new(maze);
+        let mut game = Game::new(maze);
 
         game.draw(&mut lcd, 0).expect("draw");
 
