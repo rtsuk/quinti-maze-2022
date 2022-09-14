@@ -4,68 +4,47 @@
 //! figure as the "sleeping_timer_rtc" example.
 #![no_std]
 #![no_main]
-#![feature(alloc_error_handler)]
 
-extern crate alloc;
-
-use alloc::{alloc::Layout, sync::Arc};
-use alloc_cortex_m::CortexMHeap;
-
-#[global_allocator]
-static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
-
-#[cfg(not(target_os = "macos"))]
-#[alloc_error_handler]
-fn oom(_: Layout) -> ! {
-    #[allow(clippy::empty_loop)]
-    loop {}
-}
-
+use debouncr::{debounce_stateful_3, DebouncerStateful, Edge, Repeat3};
 use feather_m4 as bsp;
-
 use panic_semihosting as _;
+
+const KEYS: &[&[char]] = &[
+    &['1', '2', '3'],
+    &['4', '5', '6'],
+    &['7', '8', '9'],
+    &['*', '0', '#'],
+];
 
 #[rtic::app(device = bsp::pac, peripherals = true, dispatchers = [EVSYS_0])]
 mod app {
     use super::*;
     use bsp::{hal, pin_alias};
+    use core::time::Duration;
     use display_interface_spi::SPIInterface;
     use hal::clock::GenericClockController;
-    use hal::gpio::Pin;
+    use hal::gpio::{DynPin, Pin};
     use hal::pac::Peripherals;
     use hal::prelude::*;
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
-    use quinti_maze::{game::Game, maze::MazeGenerator};
+    use quinti_maze::{
+        game::Game,
+        maze::{MazeGenerator, VisibleDoors},
+    };
     use rtt_target::{rprintln, rtt_init_print};
-    use spin::Mutex;
     use systick_monotonic::*;
 
-    #[derive(Clone)]
-    pub struct LcdProxy {
-        spi: Arc<Mutex<bsp::Spi>>,
-    }
-
-    impl LcdProxy {
-        pub fn new(spi: bsp::Spi) -> Self {
-            Self {
-                spi: Arc::new(Mutex::new(spi)),
-            }
-        }
-    }
-
-    impl embedded_hal::blocking::spi::Write<u8> for LcdProxy {
-        type Error = hal::sercom::spi::Error;
-
-        fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
-            self.spi.lock().write(words)
-        }
-    }
+    type KeyDebouncer = DebouncerStateful<u8, Repeat3>;
 
     /// Worlds worst delay function.
     #[inline(always)]
     pub fn delay_ms(ms: u32) {
         const CYCLES_PER_MILLIS: u32 = SYSCLK_HZ / 1000;
         cortex_m::asm::delay(CYCLES_PER_MILLIS.saturating_mul(ms));
+    }
+
+    pub fn delay_for(delay: Duration) {
+        delay_ms(delay.as_millis() as u32)
     }
 
     const SYSCLK_HZ: u32 = 120_000_000;
@@ -95,12 +74,16 @@ mod app {
     #[local]
     struct Local {
         red_led: bsp::RedLed,
-        game: Game,
-        lcd: Ili9341<SPIInterface<LcdProxy, LcdCsPin, LcdDcPin>, LcdResetPin>,
+        lcd: Ili9341<SPIInterface<bsp::Spi, LcdCsPin, LcdDcPin>, LcdResetPin>,
+        cols: [DynPin; 3],
+        rows: [DynPin; 4],
+        debouncers: [KeyDebouncer; 12],
     }
 
     #[shared]
-    struct Shared {}
+    struct Shared {
+        game: Game,
+    }
 
     #[monotonic(binds = SysTick, default = true)]
     type RtcMonotonic = Systick<100>;
@@ -108,13 +91,6 @@ mod app {
     #[init]
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         rtt_init_print!();
-
-        {
-            use core::mem::MaybeUninit;
-            const HEAP_SIZE: usize = 1024;
-            static mut HEAP: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-            unsafe { ALLOCATOR.init(HEAP.as_ptr() as usize, HEAP_SIZE) }
-        }
 
         delay_ms(100);
 
@@ -145,9 +121,8 @@ mod app {
         blink::spawn().unwrap();
 
         let sercom = peripherals.SERCOM1;
-        let spi = bsp::spi_master(&mut clocks, 8.mhz(), sercom, mclk, sck, mosi, miso);
-        let lcd_proxy = LcdProxy::new(spi);
-        let spi_iface = SPIInterface::new(lcd_proxy, lcd_dc, lcd_cs);
+        let spi = bsp::spi_master(&mut clocks, 4.mhz(), sercom, mclk, sck, mosi, miso);
+        let spi_iface = SPIInterface::new(spi, lcd_dc, lcd_cs);
         let reset_pin = pins.d12.into_push_pull_output();
 
         let mut lcd = Ili9341::new(
@@ -159,6 +134,33 @@ mod app {
         )
         .unwrap();
 
+        let cols = [pins.a2.into(), pins.a0.into(), pins.a4.into()];
+        let mut rows: [DynPin; 4] = [
+            pins.a1.into(),
+            pins.d4.into(),
+            pins.a5.into(),
+            pins.a3.into(),
+        ];
+
+        for row in rows.iter_mut() {
+            row.into_pull_up_input();
+        }
+
+        let debouncers: [KeyDebouncer; 12] = [
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+            debounce_stateful_3(false),
+        ];
+
         let mut generator = MazeGenerator::default();
         generator.generate(Some(13));
         let maze = generator.take();
@@ -167,20 +169,76 @@ mod app {
 
         game.draw(&mut lcd, 0).expect("draw");
 
+        scan::spawn().unwrap();
+
         (
-            Shared {},
-            Local { red_led, game, lcd },
+            Shared { game },
+            Local {
+                red_led,
+                lcd,
+                cols,
+                rows,
+                debouncers,
+            },
             init::Monotonics(mono),
         )
     }
 
-    #[task(local = [game, lcd, red_led])]
-    fn blink(cx: blink::Context) {
-        let time = monotonic_millis();
-        if let Err(e) = cx.local.game.draw(cx.local.lcd, time) {
-            rprintln!("err = {:?}", e);
+    #[task(local = [lcd, red_led], shared = [game])]
+    fn blink(mut cx: blink::Context) {
+        cx.shared.game.lock(|game| {
+            let time = monotonic_millis();
+            if let Err(e) = game.draw(cx.local.lcd, time) {
+                rprintln!("err = {:?}", e);
+            }
+            cx.local.red_led.toggle().unwrap();
+            blink::spawn_after(500.millis()).ok();
+        });
+    }
+
+    #[task(local = [rows, cols, debouncers], shared = [game])]
+    fn scan(mut cx: scan::Context) {
+        for (row_index, row) in cx.local.rows.iter_mut().enumerate() {
+            row.into_push_pull_output();
+            row.set_low().ok();
+            delay_ms(1);
+            for (col_index, col) in cx.local.cols.iter_mut().enumerate() {
+                let index = row_index * 3 + col_index;
+                col.into_pull_up_input();
+                let col_value = col.is_low().unwrap_or_else(|_| {
+                    rprintln!("is_low failed");
+                    false
+                });
+                let edge = cx.local.debouncers[index].update(col_value);
+                if Some(Edge::Rising) == edge {
+                    match KEYS[row_index][col_index] {
+                        '1' => cx
+                            .shared
+                            .game
+                            .lock(|game| game.try_move(VisibleDoors::Down)),
+                        '2' => cx
+                            .shared
+                            .game
+                            .lock(|game| game.try_move(VisibleDoors::Forward)),
+                        '3' => cx.shared.game.lock(|game| game.try_move(VisibleDoors::Up)),
+                        '4' => cx
+                            .shared
+                            .game
+                            .lock(|game| game.try_move(VisibleDoors::Left)),
+                        '6' => cx
+                            .shared
+                            .game
+                            .lock(|game| game.try_move(VisibleDoors::Right)),
+                        '7' => cx.shared.game.lock(|game| game.turn_left()),
+                        '9' => cx.shared.game.lock(|game| game.turn_right()),
+                        '*' => cx.shared.game.lock(|game| game.toggle_show_position()),
+                        '#' => cx.shared.game.lock(|game| game.show_direction_hint()),
+                        _ => (),
+                    }
+                }
+            }
+            row.into_pull_up_input();
         }
-        cx.local.red_led.toggle().unwrap();
-        blink::spawn_after(500.millis()).ok();
+        scan::spawn_after(10.millis()).ok();
     }
 }
