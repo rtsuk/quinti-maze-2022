@@ -1,19 +1,17 @@
 ## History
 In 1982 I wrote a
-[program that was published in Byte Magazine](https://archive.org/details/byte-magazine-1982-09-rescan/page/n25/mode/2up){:target="_blank"}.
+[program that was published in Byte Magazine](https://archive.org/details/byte-magazine-1982-09-rescan/page/n25/mode/2up).
 To celebrate the forty years that have past since, I decided
 to rewrite it today, in embedded Rust.
-
-![screen shot of Quinti-Maze](/assets/images/qm.jpg)
 
 I entered this program in the Byte Magazine games contest at the urging of my mother. I wasn't optimistic that it would win, but it squeaked in. The prize was $65 a page for the article, including the listing. This was the first time, but not the last, where I regretted not putting in more comments. That works out to almost a thousand 2022 dollars.
 
 Even more lucrative was the callout on the first page where I offer to put the program on disk for $5. I must have gotten dozens of those.
 
 The Applesoft BASIC source for the original program can be seen
-[here](https://gist.github.com/rtsuk/929585ba97c2a7270affd4120935edce){:target="_blank"}. If you have trouble understanding it, don't feel
+[here](https://gist.github.com/rtsuk/929585ba97c2a7270affd4120935edce). If you have trouble understanding it, don't feel
 bad, I can't easily understand it either.
-I was able to get it to work in an [Apple II emulator](https://storage.googleapis.com/tsuk-large-media/maze.mov){:target="_blank"}.
+I was able to get it to work in an [Apple II emulator](https://storage.googleapis.com/tsuk-large-media/maze.mov).
 
 When I wrote this, I had no notion how to generate a maze, so I did the best I could; I randomly added a lot
 of doors and hoped there would be a path out.
