@@ -167,7 +167,7 @@ mod app {
 
         let mut game = Game::new(maze);
 
-        game.draw(&mut lcd, 0).expect("draw");
+        game.draw(&mut lcd, monotonic_millis()).expect("draw");
 
         scan::spawn().unwrap();
 
@@ -187,8 +187,7 @@ mod app {
     #[task(local = [lcd, red_led], shared = [game])]
     fn blink(mut cx: blink::Context) {
         cx.shared.game.lock(|game| {
-            let time = monotonic_millis();
-            if let Err(e) = game.draw(cx.local.lcd, time) {
+            if let Err(e) = game.draw(cx.local.lcd, monotonic_millis()) {
                 rprintln!("err = {:?}", e);
             }
             cx.local.red_led.toggle().unwrap();

@@ -1,4 +1,4 @@
-use heapless::Vec;
+use heapless::{Deque, Vec};
 use rand::{prelude::*, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
@@ -324,7 +324,7 @@ impl MazeGenerator {
     }
 }
 
-pub type SolutionPath = Vec<Coord, CELL_COUNT>;
+pub type SolutionPath = Deque<Coord, CELL_COUNT>;
 
 fn find_exit(
     maze: &QuintiMaze,
@@ -344,14 +344,14 @@ fn find_exit(
         if cell.has_door(direction) {
             let new_location = location.move_in_direction(direction);
             if maze.is_win(&new_location) {
-                result.push(new_location).expect("push");
-                result.push(location).expect("push");
+                result.push_back(new_location).expect("push");
+                result.push_back(location).expect("push");
                 return true;
             }
             if Some(new_location) != prior_location
                 && find_exit(maze, Some(location), new_location, result)
             {
-                result.push(location).expect("push");
+                result.push_back(location).expect("push");
                 return true;
             }
         }
@@ -390,8 +390,8 @@ mod test {
 
         assert!(found);
         assert_eq!(path.len(), 14);
-        assert_eq!(path.pop(), Some(Coord { x: 0, y: 0, z: 0 }));
-        assert_eq!(path[0], Coord { x: 4, y: 4, z: 5 });
+        assert_eq!(path.pop_back(), Some(Coord { x: 0, y: 0, z: 0 }));
+        assert_eq!(path.front().unwrap(), &Coord { x: 4, y: 4, z: 5 });
 
         let mut generator = MazeGenerator::default();
 
@@ -403,7 +403,7 @@ mod test {
 
         assert!(found);
         assert_eq!(path.len(), 18);
-        assert_eq!(path.pop(), Some(Coord { x: 0, y: 0, z: 0 }));
-        assert_eq!(path[0], Coord { x: 4, y: 4, z: 5 });
+        assert_eq!(path.pop_back(), Some(Coord { x: 0, y: 0, z: 0 }));
+        assert_eq!(path.front(), Some(&Coord { x: 4, y: 4, z: 5 }));
     }
 }

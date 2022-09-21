@@ -5,8 +5,8 @@ use embedded_graphics_simulator::{
 };
 use quinti_maze::{
     draw::SCREEN_SIZE,
-    game::Game,
-    maze::{MazeGenerator, VisibleDoors},
+    game::{Command, Game},
+    maze::MazeGenerator,
     time::Timer,
 };
 
@@ -16,18 +16,14 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut generator = MazeGenerator::default();
     generator.generate(Some(13));
     let maze = generator.take();
-    let timer = Timer::default();
 
     let mut game = Game::new(maze);
+    let timer = Timer::default();
 
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
 
     loop {
-        if game.is_win() {
-            break;
-        }
-
         game.draw(&mut display, timer.elapsed())?;
 
         window.update(&display);
@@ -37,51 +33,42 @@ fn main() -> Result<(), core::convert::Infallible> {
                 SimulatorEvent::Quit => {
                     return Ok(());
                 }
-                SimulatorEvent::KeyDown { keycode, .. } => match keycode {
-                    Keycode::W => {
-                        game.try_move(VisibleDoors::Forward);
+                SimulatorEvent::KeyDown { keycode, .. } => {
+                    if game.key_hit() {
+                        match keycode {
+                            Keycode::W => {
+                                game.handle_command(Command::MoveForward);
+                            }
+                            Keycode::D => {
+                                game.handle_command(Command::MoveRight);
+                            }
+                            Keycode::A => {
+                                game.handle_command(Command::MoveLeft);
+                            }
+                            Keycode::E => {
+                                game.handle_command(Command::MoveUp);
+                            }
+                            Keycode::Q => {
+                                game.handle_command(Command::MoveDown);
+                            }
+                            Keycode::Left => {
+                                game.handle_command(Command::TurnLeft);
+                            }
+                            Keycode::Right => {
+                                game.handle_command(Command::TurnRight);
+                            }
+                            Keycode::Slash => {
+                                game.handle_command(Command::ToggleShowPosition);
+                            }
+                            Keycode::Equals => {
+                                game.handle_command(Command::ShowHints);
+                            }
+                            _ => {}
+                        }
                     }
-                    Keycode::D => {
-                        game.try_move(VisibleDoors::Right);
-                    }
-                    Keycode::A => {
-                        game.try_move(VisibleDoors::Left);
-                    }
-                    Keycode::E => {
-                        game.try_move(VisibleDoors::Up);
-                    }
-                    Keycode::Q => {
-                        game.try_move(VisibleDoors::Down);
-                    }
-                    Keycode::Left => {
-                        game.turn_left();
-                    }
-                    Keycode::Right => {
-                        game.turn_right();
-                    }
-                    Keycode::Slash => {
-                        game.toggle_show_position();
-                    }
-                    Keycode::Equals => {
-                        game.show_direction_hint();
-                    }
-                    _ => {}
-                },
+                }
                 _ => (),
             }
         }
     }
-
-    game.draw_win(&mut display)?;
-    window.update(&display);
-
-    'win: loop {
-        for event in window.events() {
-            if event == SimulatorEvent::Quit {
-                break 'win;
-            }
-        }
-    }
-
-    Ok(())
 }
