@@ -28,8 +28,8 @@ mod app {
     use hal::prelude::*;
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
     use quinti_maze::{
-        game::Game,
-        maze::{MazeGenerator, VisibleDoors},
+        game::{Command, Game},
+        maze::MazeGenerator,
     };
     use rtt_target::{rprintln, rtt_init_print};
     use systick_monotonic::*;
@@ -210,29 +210,47 @@ mod app {
                 });
                 let edge = cx.local.debouncers[index].update(col_value);
                 if Some(Edge::Rising) == edge {
-                    match KEYS[row_index][col_index] {
-                        '1' => cx
-                            .shared
-                            .game
-                            .lock(|game| game.try_move(VisibleDoors::Down)),
-                        '2' => cx
-                            .shared
-                            .game
-                            .lock(|game| game.try_move(VisibleDoors::Forward)),
-                        '3' => cx.shared.game.lock(|game| game.try_move(VisibleDoors::Up)),
-                        '4' => cx
-                            .shared
-                            .game
-                            .lock(|game| game.try_move(VisibleDoors::Left)),
-                        '6' => cx
-                            .shared
-                            .game
-                            .lock(|game| game.try_move(VisibleDoors::Right)),
-                        '7' => cx.shared.game.lock(|game| game.turn_left()),
-                        '9' => cx.shared.game.lock(|game| game.turn_right()),
-                        '*' => cx.shared.game.lock(|game| game.toggle_show_position()),
-                        '#' => cx.shared.game.lock(|game| game.show_direction_hint()),
-                        _ => (),
+                    let more_processing = cx.shared.game.lock(|game| game.key_hit());
+                    if more_processing {
+                        match KEYS[row_index][col_index] {
+                            '1' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::MoveDown)),
+                            '2' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::MoveForward)),
+                            '3' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::MoveUp)),
+                            '4' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::MoveLeft)),
+                            '6' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::MoveRight)),
+                            '7' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::TurnLeft)),
+                            '9' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::TurnRight)),
+                            '*' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::ToggleShowPosition)),
+                            '#' => cx
+                                .shared
+                                .game
+                                .lock(|game| game.handle_command(Command::ShowHints)),
+                            _ => (),
+                        }
                     }
                 }
             }
