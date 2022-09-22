@@ -2,6 +2,7 @@ extern crate std;
 
 use std::time::Instant;
 
+#[derive(Debug)]
 pub struct Timer {
     start: Instant,
 }

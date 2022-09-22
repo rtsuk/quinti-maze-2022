@@ -27,14 +27,22 @@ mod app {
     use hal::pac::Peripherals;
     use hal::prelude::*;
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
-    use quinti_maze::{
-        game::{Command, Game},
-        maze::MazeGenerator,
-    };
+    use quinti_maze::game::{Command, Game, PlatformSpecific};
     use rtt_target::{rprintln, rtt_init_print};
     use systick_monotonic::*;
 
     type KeyDebouncer = DebouncerStateful<u8, Repeat3>;
+
+    #[derive(Default, Debug)]
+    pub struct DevicePlatform;
+
+    impl PlatformSpecific for DevicePlatform {
+        fn play_victory_notes(&mut self) {}
+
+        fn ticks(&mut self) -> u64 {
+            monotonic_millis()
+        }
+    }
 
     /// Worlds worst delay function.
     #[inline(always)]
@@ -82,7 +90,7 @@ mod app {
 
     #[shared]
     struct Shared {
-        game: Game,
+        game: Game<DevicePlatform>,
     }
 
     #[monotonic(binds = SysTick, default = true)]
@@ -161,13 +169,9 @@ mod app {
             debounce_stateful_3(false),
         ];
 
-        let mut generator = MazeGenerator::default();
-        generator.generate(Some(13));
-        let maze = generator.take();
+        let mut game = Game::new();
 
-        let mut game = Game::new(maze);
-
-        game.draw(&mut lcd, monotonic_millis()).expect("draw");
+        game.draw(&mut lcd).expect("draw");
 
         scan::spawn().unwrap();
 
@@ -187,7 +191,7 @@ mod app {
     #[task(local = [lcd, red_led], shared = [game])]
     fn blink(mut cx: blink::Context) {
         cx.shared.game.lock(|game| {
-            if let Err(e) = game.draw(cx.local.lcd, monotonic_millis()) {
+            if let Err(e) = game.draw(cx.local.lcd) {
                 rprintln!("err = {:?}", e);
             }
             cx.local.red_led.toggle().unwrap();

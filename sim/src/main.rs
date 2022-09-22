@@ -5,26 +5,33 @@ use embedded_graphics_simulator::{
 };
 use quinti_maze::{
     draw::SCREEN_SIZE,
-    game::{Command, Game},
-    maze::MazeGenerator,
+    game::{Command, Game, PlatformSpecific},
     time::Timer,
 };
+
+#[derive(Default, Debug)]
+struct SimPlatform {
+    timer: Timer,
+}
+
+impl PlatformSpecific for SimPlatform {
+    fn play_victory_notes(&mut self) {}
+
+    fn ticks(&mut self) -> u64 {
+        self.timer.elapsed()
+    }
+}
 
 fn main() -> Result<(), core::convert::Infallible> {
     let mut display = SimulatorDisplay::<Rgb565>::new(SCREEN_SIZE);
 
-    let mut generator = MazeGenerator::default();
-    generator.generate(Some(13));
-    let maze = generator.take();
-
-    let mut game = Game::new(maze);
-    let timer = Timer::default();
+    let mut game = Game::<SimPlatform>::new();
 
     let output_settings = OutputSettings::default();
     let mut window = Window::new("Quinti-Maze", &output_settings);
 
     loop {
-        game.draw(&mut display, timer.elapsed())?;
+        game.draw(&mut display)?;
 
         window.update(&display);
 

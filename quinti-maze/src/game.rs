@@ -7,7 +7,13 @@ use crate::{
         find_path_to_exit, Coord, Direction, MazeGenerator, QuintiMaze, SolutionPath, VisibleDoors,
     },
 };
+use core::fmt::Debug;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
+
+pub trait PlatformSpecific: Debug + Default {
+    fn play_victory_notes(&mut self);
+    fn ticks(&mut self) -> u64;
+}
 
 enum Phase {
     Start,
@@ -27,8 +33,9 @@ pub enum Command {
     ShowHints,
 }
 
-pub struct Game {
+pub struct Game<T: PlatformSpecific> {
     pub maze: QuintiMaze,
+    platform: T,
     phase: Phase,
     position: Coord,
     needs_full_draw: bool,
@@ -36,12 +43,18 @@ pub struct Game {
     direction_hint: Option<Direction>,
     path_to_exit: Option<SolutionPath>,
     facing: Direction,
+    start: u64,
 }
 
-impl Game {
-    pub fn new(maze: QuintiMaze) -> Self {
+impl<T: PlatformSpecific> Default for Game<T> {
+    fn default() -> Self {
+        let mut platform = T::default();
+        let mut generator = MazeGenerator::default();
+        generator.generate(Some(platform.ticks()));
+        let maze = generator.take();
         Self {
             maze,
+            platform: Default::default(),
             phase: Phase::Start,
             position: Coord::default(),
             needs_full_draw: true,
@@ -49,17 +62,25 @@ impl Game {
             direction_hint: None,
             path_to_exit: None,
             facing: Direction::North,
+            start: platform.ticks(),
         }
+    }
+}
+
+impl<T: PlatformSpecific> Game<T> {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn make_new_maze(&mut self) {
         let mut generator = MazeGenerator::default();
-        generator.generate(Some(14));
+        generator.generate(Some(self.platform.ticks()));
         self.maze = generator.take();
         self.position = Coord::default();
+        self.start = self.platform.ticks();
     }
 
-    pub fn draw_playing<D>(&mut self, display: &mut D, elapsed: u64) -> Result<(), D::Error>
+    pub fn draw_playing<D>(&mut self, display: &mut D) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = Rgb565>,
     {
@@ -98,19 +119,19 @@ impl Game {
             self.facing,
             self.show_position.then_some(self.position),
             self.direction_hint,
-            elapsed,
+            self.platform.ticks() - self.start,
             needs_full_draw,
         )?;
 
         Ok(())
     }
 
-    pub fn draw<D>(&mut self, display: &mut D, elapsed: u64) -> Result<(), D::Error>
+    pub fn draw<D>(&mut self, display: &mut D) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = Rgb565>,
     {
         match self.phase {
-            Phase::Playing => self.draw_playing(display, elapsed)?,
+            Phase::Playing => self.draw_playing(display)?,
             Phase::Done => self.draw_win(display)?,
             Phase::Start => self.draw_start(display)?,
         }
@@ -123,6 +144,7 @@ impl Game {
             Phase::Playing => true,
             Phase::Start => {
                 self.phase = Phase::Playing;
+                self.start = self.platform.ticks();
                 false
             }
             Phase::Done => {
