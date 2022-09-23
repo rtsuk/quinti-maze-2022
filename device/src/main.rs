@@ -16,16 +16,17 @@ const KEYS: &[&[char]] = &[
     &['*', '0', '#'],
 ];
 
-#[rtic::app(device = bsp::pac, peripherals = true, dispatchers = [EVSYS_0])]
+#[rtic::app(device = bsp::pac, peripherals = true, dispatchers = [EVSYS_0, EVSYS_1, EVSYS_2])]
 mod app {
     use super::*;
     use bsp::{hal, pin_alias};
     use core::time::Duration;
     use display_interface_spi::SPIInterface;
     use hal::clock::GenericClockController;
-    use hal::gpio::{DynPin, Pin};
+    use hal::gpio::{DynPin, Pin, F, PA14};
     use hal::pac::Peripherals;
     use hal::prelude::*;
+    use hal::pwm::{Channel, TCC2Pinout, Tcc2Pwm};
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
     use quinti_maze::game::{Command, Game, PlatformSpecific};
     use rtt_target::{rprintln, rtt_init_print};
@@ -37,7 +38,9 @@ mod app {
     pub struct DevicePlatform;
 
     impl PlatformSpecific for DevicePlatform {
-        fn play_victory_notes(&mut self) {}
+        fn play_victory_notes(&mut self) {
+            beep::spawn_after(500.millis(), true).ok();
+        }
 
         fn ticks(&mut self) -> u64 {
             monotonic_millis()
@@ -86,6 +89,7 @@ mod app {
         cols: [DynPin; 3],
         rows: [DynPin; 4],
         debouncers: [KeyDebouncer; 12],
+        pwm: Tcc2Pwm<PA14, hal::gpio::Alternate<F>>,
     }
 
     #[shared]
@@ -133,7 +137,7 @@ mod app {
         let spi_iface = SPIInterface::new(spi, lcd_dc, lcd_cs);
         let reset_pin = pins.d12.into_push_pull_output();
 
-        let mut lcd = Ili9341::new(
+        let lcd = Ili9341::new(
             spi_iface,
             reset_pin,
             &mut CycleDelay::default(),
@@ -145,7 +149,7 @@ mod app {
         let cols = [pins.a2.into(), pins.a0.into(), pins.a4.into()];
         let mut rows: [DynPin; 4] = [
             pins.a1.into(),
-            pins.d4.into(),
+            pins.d0.into(),
             pins.a5.into(),
             pins.a3.into(),
         ];
@@ -169,9 +173,22 @@ mod app {
             debounce_stateful_3(false),
         ];
 
-        let mut game = Game::new();
+        let buzzer = pins.d4.into_alternate::<F>();
+        let gclk0 = clocks.gclk0();
 
-        game.draw(&mut lcd).expect("draw");
+        let mut pwm = Tcc2Pwm::new(
+            &clocks.tcc2_tcc3(&gclk0).unwrap(),
+            440.hz(),
+            peripherals.TCC2,
+            TCC2Pinout::Pa14(buzzer),
+            &mut peripherals.MCLK,
+        );
+
+        let max_duty = pwm.get_max_duty();
+        pwm.set_duty(Channel::_0, max_duty / 4);
+        pwm.disable(Channel::_0);
+
+        let game = Game::new();
 
         scan::spawn().unwrap();
 
@@ -183,6 +200,7 @@ mod app {
                 cols,
                 rows,
                 debouncers,
+                pwm,
             },
             init::Monotonics(mono),
         )
@@ -199,7 +217,17 @@ mod app {
         });
     }
 
-    #[task(local = [rows, cols, debouncers], shared = [game])]
+    #[task(priority = 2, local = [pwm])]
+    fn beep(cx: beep::Context, start: bool) {
+        if start {
+            cx.local.pwm.enable(Channel::_0);
+        } else {
+            cx.local.pwm.disable(Channel::_0);
+        }
+        beep::spawn_after(200.millis(), !start).ok();
+    }
+
+    #[task(priority = 1, local = [rows, cols, debouncers], shared = [game])]
     fn scan(mut cx: scan::Context) {
         for (row_index, row) in cx.local.rows.iter_mut().enumerate() {
             row.into_push_pull_output();

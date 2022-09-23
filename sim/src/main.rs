@@ -1,21 +1,58 @@
 #![no_std]
+use core::{
+    fmt::{Debug, Error, Formatter},
+    time::Duration,
+};
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics_simulator::{
     sdl2::Keycode, OutputSettings, SimulatorDisplay, SimulatorEvent, Window,
 };
 use quinti_maze::{
     draw::SCREEN_SIZE,
-    game::{Command, Game, PlatformSpecific},
+    game::{Command, Game, PlatformSpecific, NOTES},
     time::Timer,
 };
+use rodio::{source::SineWave, OutputStream, OutputStreamHandle, Sink, Source};
 
-#[derive(Default, Debug)]
 struct SimPlatform {
     timer: Timer,
+    #[allow(unused)]
+    stream: OutputStream,
+    #[allow(unused)]
+    stream_handle: OutputStreamHandle,
+}
+
+impl Default for SimPlatform {
+    fn default() -> Self {
+        let (stream, stream_handle) = OutputStream::try_default().expect("default sound output");
+        Self {
+            timer: Timer::default(),
+            stream,
+            stream_handle,
+        }
+    }
+}
+
+impl Debug for SimPlatform {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        f.debug_struct("Sprite")
+            .field("timer", &self.timer)
+            .finish()
+    }
 }
 
 impl PlatformSpecific for SimPlatform {
-    fn play_victory_notes(&mut self) {}
+    fn play_victory_notes(&mut self) {
+        let sink = Sink::try_new(&self.stream_handle).expect("new sink");
+        for (freq, duration, delay) in NOTES {
+            let source = SineWave::new(*freq)
+                .take_duration(Duration::from_millis(*duration))
+                .amplify(0.20)
+                .delay(Duration::from_millis(*delay));
+            sink.append(source);
+        }
+        sink.sleep_until_end();
+    }
 
     fn ticks(&mut self) -> u64 {
         self.timer.elapsed()

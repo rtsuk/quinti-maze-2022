@@ -7,3 +7,4 @@ edition = "2021"
 embedded-graphics = "0.7.1"
 embedded-graphics-simulator = "0.3.0"
 quinti-maze = { version = "0.1.0", path = "../quinti-maze" }
+rodio = "0.14.0"

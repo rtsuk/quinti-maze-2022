@@ -10,6 +10,16 @@ use crate::{
 use core::fmt::Debug;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 
+pub const NOTES: &[(u32, u64, u64)] = &[
+    (1000, 256, 0),
+    (1000, 128, 10),
+    (1000, 128, 10),
+    (1333, 169, 10),
+    (1000, 169, 10),
+    (1333, 169, 10),
+    (1667, 653, 10),
+];
+
 pub trait PlatformSpecific: Debug + Default {
     fn play_victory_notes(&mut self);
     fn ticks(&mut self) -> u64;
@@ -184,6 +194,7 @@ impl<T: PlatformSpecific> Game<T> {
 
         if self.is_win() {
             self.phase = Phase::Done;
+            self.platform.play_victory_notes();
             self.make_new_maze();
         }
     }
