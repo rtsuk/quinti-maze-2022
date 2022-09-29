@@ -35,7 +35,7 @@ impl Default for SimPlatform {
 
 impl Debug for SimPlatform {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.debug_struct("Sprite")
+        f.debug_struct("SimPlatform")
             .field("timer", &self.timer)
             .finish()
     }
