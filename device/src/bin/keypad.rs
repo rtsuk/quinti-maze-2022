@@ -4,7 +4,7 @@
 use feather_m4 as bsp;
 
 use bsp::{
-    ehal::blocking::delay::DelayMs,
+    ehal::blocking::delay::DelayUs,
     entry,
     hal::{clock::GenericClockController, delay::Delay, gpio::DynPin, prelude::*},
     pac::{CorePeripherals, Peripherals},
@@ -69,7 +69,7 @@ fn main() -> ! {
         for (row_index, row) in rows.iter_mut().enumerate() {
             row.into_push_pull_output();
             row.set_low().ok();
-            delayer.delay_ms(1u8);
+            delayer.delay_us(50u8);
             for (col_index, col) in cols.iter_mut().enumerate() {
                 let index = row_index * 3 + col_index;
                 col.into_pull_up_input();
