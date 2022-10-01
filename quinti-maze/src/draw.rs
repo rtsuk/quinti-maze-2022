@@ -410,5 +410,33 @@ where
         Alignment::Center,
     )
     .draw(display)?;
+    Text::with_alignment(
+        "Press any key to continue",
+        Point::new(
+            (SCREEN_SIZE.width / 2) as i32,
+            (SCREEN_SIZE.height - 30) as i32,
+        ),
+        style,
+        Alignment::Center,
+    )
+    .draw(display)?;
+    Ok(())
+}
+
+pub fn draw_start<D>(display: &mut D) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let style = MonoTextStyle::new(&FONT_8X13_BOLD, Rgb565::WHITE);
+    Text::with_alignment(
+        "Press any key to start",
+        Point::new(
+            (SCREEN_SIZE.width / 2) as i32,
+            (SCREEN_SIZE.height / 2) as i32,
+        ),
+        style,
+        Alignment::Center,
+    )
+    .draw(display)?;
     Ok(())
 }

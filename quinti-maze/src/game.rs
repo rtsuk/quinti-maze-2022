@@ -1,7 +1,7 @@
 use crate::{
     draw::{
-        draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_status,
-        draw_top_door, draw_win,
+        draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_start,
+        draw_status, draw_top_door, draw_win,
     },
     maze::{
         find_path_to_exit, Coord, Direction, MazeGenerator, QuintiMaze, SolutionPath, VisibleDoors,
@@ -273,6 +273,7 @@ impl<T: PlatformSpecific> Game<T> {
         D: DrawTarget<Color = Rgb565>,
     {
         display.clear(Rgb565::BLACK)?;
+        draw_start(display)?;
         Ok(())
     }
 }
