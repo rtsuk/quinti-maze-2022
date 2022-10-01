@@ -43,6 +43,15 @@ pub enum Command {
     ShowHints,
 }
 
+#[derive(Default)]
+struct Showing {
+    pub left: bool,
+    pub front: bool,
+    pub right: bool,
+    pub top: bool,
+    pub bottom: bool,
+}
+
 pub struct Game<T: PlatformSpecific> {
     pub maze: QuintiMaze,
     platform: T,
@@ -54,6 +63,7 @@ pub struct Game<T: PlatformSpecific> {
     path_to_exit: Option<SolutionPath>,
     facing: Direction,
     start: u64,
+    showing: Showing,
 }
 
 impl<T: PlatformSpecific> Default for Game<T> {
@@ -73,6 +83,7 @@ impl<T: PlatformSpecific> Default for Game<T> {
             path_to_exit: None,
             facing: Direction::North,
             start: platform.ticks(),
+            showing: Default::default(),
         }
     }
 }
@@ -96,32 +107,41 @@ impl<T: PlatformSpecific> Game<T> {
     {
         let needs_full_draw = self.needs_full_draw;
         if needs_full_draw {
+            self.showing = Default::default();
             display.clear(Rgb565::WHITE)?;
-
-            let cell = self.maze.get_cell(&self.position);
-
             draw_room(display)?;
-            if cell.right(self.facing) {
-                draw_right_door(display)?;
-            }
+        }
 
-            if cell.left(self.facing) {
-                draw_left_door(display)?;
-            }
+        let cell = self.maze.get_cell(&self.position);
 
-            if cell.top() {
-                draw_top_door(display)?;
-            }
+        let showing_right = cell.right(self.facing);
+        if showing_right != self.showing.right {
+            draw_right_door(display, showing_right)?;
+            self.showing.right = showing_right;
+        }
 
-            if cell.bottom() {
-                draw_bottom_door(display)?;
-            }
+        let showing_left = cell.left(self.facing);
+        if showing_left != self.showing.left {
+            draw_left_door(display, showing_left)?;
+            self.showing.left = showing_left;
+        }
 
-            if cell.front(self.facing) {
-                draw_front_door(display)?;
-            }
+        let showing_top = cell.top();
+        if showing_top != self.showing.top {
+            draw_top_door(display, showing_top)?;
+            self.showing.top = showing_top;
+        }
 
-            self.needs_full_draw = false;
+        let showing_bottom = cell.bottom();
+        if showing_bottom != self.showing.bottom {
+            draw_bottom_door(display, showing_bottom)?;
+            self.showing.bottom = showing_bottom;
+        }
+
+        let showing_front = cell.front(self.facing);
+        if showing_front != self.showing.front {
+            draw_front_door(display, showing_front)?;
+            self.showing.front = showing_front;
         }
 
         draw_status(
@@ -130,8 +150,9 @@ impl<T: PlatformSpecific> Game<T> {
             self.show_position.then_some(self.position),
             self.direction_hint,
             self.platform.ticks() - self.start,
-            needs_full_draw,
         )?;
+
+        self.needs_full_draw = false;
 
         Ok(())
     }
@@ -154,6 +175,7 @@ impl<T: PlatformSpecific> Game<T> {
             Phase::Playing => true,
             Phase::Start => {
                 self.phase = Phase::Playing;
+                self.needs_full_draw = true;
                 self.start = self.platform.ticks();
                 false
             }
@@ -190,8 +212,6 @@ impl<T: PlatformSpecific> Game<T> {
             }
         }
 
-        self.needs_full_draw = true;
-
         if self.is_win() {
             self.phase = Phase::Done;
             self.platform.play_victory_notes();
@@ -201,12 +221,10 @@ impl<T: PlatformSpecific> Game<T> {
 
     pub fn turn_left(&mut self) {
         self.facing = VisibleDoors::Left.direction(self.facing);
-        self.needs_full_draw = true;
     }
 
     pub fn turn_right(&mut self) {
         self.facing = VisibleDoors::Right.direction(self.facing);
-        self.needs_full_draw = true;
     }
 
     pub fn toggle_show_position(&mut self) {
