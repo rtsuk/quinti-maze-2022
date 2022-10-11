@@ -50,7 +50,7 @@ const ORIGINAL_LD_RIGHT: f32 = map_x_to_ratio!(49.0);
 const ORIGINAL_LRD_FRONT_TOP: f32 = map_y_to_ratio!(39.0);
 const ORIGINAL_LRD_BACK_TOP: f32 = map_y_to_ratio!(49.0);
 const ORIGINAL_LRD_FRONT_BOTTOM: f32 = map_y_to_ratio!(149.0);
-const ORIGINAL_LRD_BACK_BOTTOM: f32 = map_y_to_ratio!(139.0);
+const ORIGINAL_LRD_BACK_BOTTOM: f32 = map_y_to_ratio!(137.0);
 
 const ORIGINAL_RD_LEFT: f32 = map_x_to_ratio!(259.0);
 const ORIGINAL_RD_RIGHT: f32 = map_x_to_ratio!(229.0);
@@ -117,11 +117,42 @@ const FD_FRONT_BOTTOM: i32 = map_y_to_screen!(ORIGINAL_FD_FRONT_BOTTOM);
 const FD_BACK_TOP: i32 = map_y_to_screen!(ORIGINAL_FD_BACK_TOP);
 const FD_BACK_BOTTOM: i32 = map_y_to_screen!(ORIGINAL_FD_BACK_BOTTOM);
 
+fn color_for_door(showing: bool) -> Rgb565 {
+    if showing {
+        Rgb565::BLACK
+    } else {
+        Rgb565::WHITE
+    }
+}
+
 fn draw_lines<D>(points: &[Point], display: &mut D) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
     let line_style = PrimitiveStyle::with_stroke(Rgb565::BLACK, 1);
+    let mut last_point = None;
+
+    for point in points {
+        if let Some(last_point) = last_point.as_ref() {
+            Line::new(*last_point, *point)
+                .into_styled(line_style)
+                .draw(display)?;
+        }
+        last_point = Some(*point);
+    }
+
+    Ok(())
+}
+
+fn draw_lines_with_color<D>(
+    points: &[Point],
+    color: Rgb565,
+    display: &mut D,
+) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let line_style = PrimitiveStyle::with_stroke(color, 1);
     let mut last_point = None;
 
     for point in points {
@@ -170,60 +201,64 @@ where
     draw_lines(&BOTTOM_LEFT_LINE, display)
 }
 
-pub fn draw_left_door<D>(display: &mut D) -> Result<(), D::Error>
+pub fn draw_left_door<D>(display: &mut D, showing: bool) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    const LD_FRAME: [Point; 5] = [
+    let color = color_for_door(showing);
+
+    const LD_FRAME: [Point; 4] = [
+        Point::new(LD_LEFT, LRD_FRONT_BOTTOM),
         Point::new(LD_LEFT, LRD_FRONT_TOP),
         Point::new(LD_RIGHT, LRD_BACK_TOP),
         Point::new(LD_RIGHT, LRD_BACK_BOTTOM),
-        Point::new(LD_LEFT, LRD_FRONT_BOTTOM),
-        Point::new(LD_LEFT, LRD_FRONT_TOP),
     ];
-    draw_lines(&LD_FRAME, display)?;
+    draw_lines_with_color(&LD_FRAME, color, display)?;
 
     const LD_TOP: [Point; 2] = [
         Point::new(LD_LEFT, LRD_BACK_TOP),
         Point::new(LD_RIGHT, LRD_BACK_TOP),
     ];
-    draw_lines(&LD_TOP, display)?;
+    draw_lines_with_color(&LD_TOP, color, display)?;
     const LD_BOTTOM: [Point; 2] = [
         Point::new(LD_LEFT, LRD_BACK_BOTTOM),
         Point::new(LD_RIGHT, LRD_BACK_BOTTOM),
     ];
-    draw_lines(&LD_BOTTOM, display)
+    draw_lines_with_color(&LD_BOTTOM, color, display)
 }
 
-pub fn draw_right_door<D>(display: &mut D) -> Result<(), D::Error>
+pub fn draw_right_door<D>(display: &mut D, showing: bool) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    const RD_FRAME: [Point; 5] = [
+    let color = color_for_door(showing);
+
+    const RD_FRAME: [Point; 4] = [
+        Point::new(RD_LEFT, LRD_FRONT_BOTTOM),
         Point::new(RD_LEFT, LRD_FRONT_TOP),
         Point::new(RD_RIGHT, LRD_BACK_TOP),
         Point::new(RD_RIGHT, LRD_BACK_BOTTOM),
-        Point::new(RD_LEFT, LRD_FRONT_BOTTOM),
-        Point::new(RD_LEFT, LRD_FRONT_TOP),
     ];
-    draw_lines(&RD_FRAME, display)?;
+    draw_lines_with_color(&RD_FRAME, color, display)?;
 
     const RD_TOP: [Point; 2] = [
         Point::new(RD_LEFT, LRD_BACK_TOP),
         Point::new(RD_RIGHT, LRD_BACK_TOP),
     ];
-    draw_lines(&RD_TOP, display)?;
+    draw_lines_with_color(&RD_TOP, color, display)?;
     const RD_BOTTOM: [Point; 2] = [
         Point::new(RD_LEFT, LRD_BACK_BOTTOM),
         Point::new(RD_RIGHT, LRD_BACK_BOTTOM),
     ];
-    draw_lines(&RD_BOTTOM, display)
+    draw_lines_with_color(&RD_BOTTOM, color, display)
 }
 
-pub fn draw_top_door<D>(display: &mut D) -> Result<(), D::Error>
+pub fn draw_top_door<D>(display: &mut D, showing: bool) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
+    let color = color_for_door(showing);
+
     const TD_FRAME: [Point; 5] = [
         Point::new(TBD_FRONT_LEFT, TD_TOP),
         Point::new(TBD_FRONT_RIGHT, TD_TOP),
@@ -231,23 +266,25 @@ where
         Point::new(TBD_BACK_LEFT, TD_BOTTOM),
         Point::new(TBD_FRONT_LEFT, TD_TOP),
     ];
-    draw_lines(&TD_FRAME, display)?;
+    draw_lines_with_color(&TD_FRAME, color, display)?;
     const TD_LEFT: [Point; 2] = [
         Point::new(TBD_BACK_LEFT, TD_TOP),
         Point::new(TBD_BACK_LEFT, TD_BOTTOM),
     ];
-    draw_lines(&TD_LEFT, display)?;
+    draw_lines_with_color(&TD_LEFT, color, display)?;
     const TD_RIGHT: [Point; 2] = [
         Point::new(TBD_BACK_RIGHT, TD_TOP),
         Point::new(TBD_BACK_RIGHT, TD_BOTTOM),
     ];
-    draw_lines(&TD_RIGHT, display)
+    draw_lines_with_color(&TD_RIGHT, color, display)
 }
 
-pub fn draw_bottom_door<D>(display: &mut D) -> Result<(), D::Error>
+pub fn draw_bottom_door<D>(display: &mut D, showing: bool) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
+    let color = color_for_door(showing);
+
     const BD_FRAME: [Point; 5] = [
         Point::new(TBD_FRONT_LEFT, BD_TOP),
         Point::new(TBD_FRONT_RIGHT, BD_TOP),
@@ -255,54 +292,73 @@ where
         Point::new(TBD_BACK_LEFT, BD_BOTTOM),
         Point::new(TBD_FRONT_LEFT, BD_TOP),
     ];
-    draw_lines(&BD_FRAME, display)?;
+    draw_lines_with_color(&BD_FRAME, color, display)?;
     const BD_LEFT: [Point; 2] = [
         Point::new(TBD_BACK_LEFT, BD_TOP),
         Point::new(TBD_BACK_LEFT, BD_BOTTOM),
     ];
-    draw_lines(&BD_LEFT, display)?;
+    draw_lines_with_color(&BD_LEFT, color, display)?;
     const BD_RIGHT: [Point; 2] = [
         Point::new(TBD_BACK_RIGHT, BD_TOP),
         Point::new(TBD_BACK_RIGHT, BD_BOTTOM),
     ];
-    draw_lines(&BD_RIGHT, display)
+    draw_lines_with_color(&BD_RIGHT, color, display)
 }
 
-pub fn draw_front_door<D>(display: &mut D) -> Result<(), D::Error>
+pub fn draw_front_door<D>(display: &mut D, showing: bool) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    const FD_FRAME: &[Point] = &[
+    let color = color_for_door(showing);
+
+    const FD_FRONT_FRAME: &[Point] = &[
+		Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM),
         Point::new(FD_FRONT_LEFT, FD_FRONT_TOP),
         Point::new(FD_FRONT_RIGHT, FD_FRONT_TOP),
         Point::new(FD_FRONT_RIGHT, FD_FRONT_BOTTOM),
-        Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM),
-        Point::new(FD_FRONT_LEFT, FD_FRONT_TOP),
+		];
+    draw_lines_with_color(FD_FRONT_FRAME, color, display)?;
+
+    const FD_BACK_FRAME: &[Point] = &[
         Point::new(FD_BACK_LEFT, FD_BACK_TOP),
         Point::new(FD_BACK_RIGHT, FD_BACK_TOP),
         Point::new(FD_BACK_RIGHT, FD_BACK_BOTTOM),
         Point::new(FD_BACK_LEFT, FD_BACK_BOTTOM),
         Point::new(FD_BACK_LEFT, FD_BACK_TOP),
     ];
-    draw_lines(FD_FRAME, display)?;
+    draw_lines_with_color(FD_BACK_FRAME, color, display)?;
 
     const FD_BOTTOM_LEFT: [Point; 2] = [
         Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM),
         Point::new(FD_BACK_LEFT, FD_BACK_BOTTOM),
     ];
-    draw_lines(&FD_BOTTOM_LEFT, display)?;
+    draw_lines_with_color(&FD_BOTTOM_LEFT, color, display)?;
 
     const FD_BOTTOM_RIGHT: [Point; 2] = [
         Point::new(FD_FRONT_RIGHT, FD_FRONT_BOTTOM),
         Point::new(FD_BACK_RIGHT, FD_BACK_BOTTOM),
     ];
-    draw_lines(&FD_BOTTOM_RIGHT, display)?;
+    draw_lines_with_color(&FD_BOTTOM_RIGHT, color, display)?;
 
     const FD_TOP_RIGHT: [Point; 2] = [
         Point::new(FD_FRONT_RIGHT, FD_FRONT_TOP),
         Point::new(FD_BACK_RIGHT, FD_BACK_TOP),
     ];
-    draw_lines(&FD_TOP_RIGHT, display)
+    draw_lines_with_color(&FD_TOP_RIGHT, color, display)?;
+
+    const FD_TOP_LEFT: [Point; 2] = [
+        Point::new(FD_FRONT_LEFT, FD_FRONT_TOP),
+        Point::new(FD_BACK_LEFT, FD_BACK_TOP),
+    ];
+    draw_lines_with_color(&FD_TOP_LEFT, color, display)?;
+
+	// Redraw the two pixels that might have been erased by the
+	// left and right sides of the front door.
+    const FIX_PIXELS: [Pixel<Rgb565>;2] = [
+        Pixel(Point::new(FD_FRONT_RIGHT, FD_FRONT_BOTTOM), Rgb565::BLACK),
+        Pixel(Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM), Rgb565::BLACK),
+    ];
+	display.draw_iter(FIX_PIXELS)
 }
 
 pub fn draw_status<D>(
@@ -311,7 +367,35 @@ pub fn draw_status<D>(
     position: Option<Coord>,
     hint: Option<Direction>,
     elapsed: u64,
-    clear: bool,
+) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let status_top = FRONT_BOTTOM as u32;
+    let status_height = SCREEN_SIZE.height - status_top;
+
+    let style = PrimitiveStyleBuilder::new()
+        .fill_color(Rgb565::BLACK)
+        .build();
+
+    Rectangle::new(
+        Point::new(0, FRONT_BOTTOM),
+        Size::new(SCREEN_SIZE.width, status_height),
+    )
+    .into_styled(style)
+    .draw(display)?;
+
+    update_status(display, facing, position, hint, elapsed)?;
+
+    Ok(())
+}
+
+pub fn update_status<D>(
+    display: &mut D,
+    facing: Direction,
+    position: Option<Coord>,
+    hint: Option<Direction>,
+    elapsed: u64,
 ) -> Result<(), D::Error>
 where
     D: DrawTarget<Color = Rgb565>,
@@ -319,19 +403,6 @@ where
     let status_top = FRONT_BOTTOM as u32;
     let status_height = SCREEN_SIZE.height - status_top;
     let status_center_v = (SCREEN_SIZE.height - status_height / 2 + 5) as i32;
-
-    if clear {
-        let style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::BLACK)
-            .build();
-
-        Rectangle::new(
-            Point::new(0, FRONT_BOTTOM),
-            Size::new(SCREEN_SIZE.width, status_height),
-        )
-        .into_styled(style)
-        .draw(display)?;
-    }
 
     let style = MonoTextStyleBuilder::new()
         .font(&FONT_8X13_BOLD)
