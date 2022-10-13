@@ -312,11 +312,11 @@ where
     let color = color_for_door(showing);
 
     const FD_FRONT_FRAME: &[Point] = &[
-		Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM),
+        Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM),
         Point::new(FD_FRONT_LEFT, FD_FRONT_TOP),
         Point::new(FD_FRONT_RIGHT, FD_FRONT_TOP),
         Point::new(FD_FRONT_RIGHT, FD_FRONT_BOTTOM),
-		];
+    ];
     draw_lines_with_color(FD_FRONT_FRAME, color, display)?;
 
     const FD_BACK_FRAME: &[Point] = &[
@@ -352,13 +352,13 @@ where
     ];
     draw_lines_with_color(&FD_TOP_LEFT, color, display)?;
 
-	// Redraw the two pixels that might have been erased by the
-	// left and right sides of the front door.
-    const FIX_PIXELS: [Pixel<Rgb565>;2] = [
+    // Redraw the two pixels that might have been erased by the
+    // left and right sides of the front door.
+    const FIX_PIXELS: [Pixel<Rgb565>; 2] = [
         Pixel(Point::new(FD_FRONT_RIGHT, FD_FRONT_BOTTOM), Rgb565::BLACK),
         Pixel(Point::new(FD_FRONT_LEFT, FD_FRONT_BOTTOM), Rgb565::BLACK),
     ];
-	display.draw_iter(FIX_PIXELS)
+    display.draw_iter(FIX_PIXELS)
 }
 
 pub fn draw_status<D>(
