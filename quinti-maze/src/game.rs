@@ -25,12 +25,6 @@ pub trait PlatformSpecific: Debug + Default {
     fn ticks(&mut self) -> u64;
 }
 
-enum Phase {
-    Start,
-    Playing,
-    Done,
-}
-
 pub enum Command {
     MoveForward,
     MoveLeft,
@@ -43,7 +37,7 @@ pub enum Command {
     ShowHints,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Showing {
     pub left: bool,
     pub front: bool,
@@ -52,10 +46,9 @@ struct Showing {
     pub bottom: bool,
 }
 
-pub struct Game<T: PlatformSpecific> {
-    pub maze: QuintiMaze,
-    platform: T,
-    phase: Phase,
+#[derive(Debug, Default)]
+struct PlayingPhaseData {
+    maze: QuintiMaze,
     position: Coord,
     needs_full_draw: bool,
     show_position: bool,
@@ -66,42 +59,19 @@ pub struct Game<T: PlatformSpecific> {
     showing: Showing,
 }
 
-impl<T: PlatformSpecific> Default for Game<T> {
-    fn default() -> Self {
-        let mut platform = T::default();
+impl PlayingPhaseData {
+    pub fn new(ticks: u64) -> Self {
         let mut generator = MazeGenerator::default();
-        generator.generate(Some(platform.ticks()));
-        let maze = generator.take();
+        generator.generate(Some(ticks));
         Self {
-            maze,
-            platform: Default::default(),
-            phase: Phase::Start,
-            position: Coord::default(),
             needs_full_draw: true,
-            show_position: false,
-            direction_hint: None,
-            path_to_exit: None,
-            facing: Direction::North,
-            start: platform.ticks(),
-            showing: Default::default(),
+            maze: generator.take(),
+            start: ticks,
+            ..Default::default()
         }
     }
-}
 
-impl<T: PlatformSpecific> Game<T> {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn make_new_maze(&mut self) {
-        let mut generator = MazeGenerator::default();
-        generator.generate(Some(self.platform.ticks()));
-        self.maze = generator.take();
-        self.position = Coord::default();
-        self.start = self.platform.ticks();
-    }
-
-    pub fn draw_playing<D>(&mut self, display: &mut D) -> Result<(), D::Error>
+    pub fn draw_playing<D>(&mut self, ticks: u64, display: &mut D) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = Rgb565>,
     {
@@ -149,7 +119,7 @@ impl<T: PlatformSpecific> Game<T> {
             self.facing,
             self.show_position.then_some(self.position),
             self.direction_hint,
-            self.platform.ticks() - self.start,
+            ticks - self.start,
         )?;
 
         self.needs_full_draw = false;
@@ -157,37 +127,7 @@ impl<T: PlatformSpecific> Game<T> {
         Ok(())
     }
 
-    pub fn draw<D>(&mut self, display: &mut D) -> Result<(), D::Error>
-    where
-        D: DrawTarget<Color = Rgb565>,
-    {
-        match self.phase {
-            Phase::Playing => self.draw_playing(display)?,
-            Phase::Done => self.draw_win(display)?,
-            Phase::Start => self.draw_start(display)?,
-        }
-
-        Ok(())
-    }
-
-    pub fn key_hit(&mut self) -> bool {
-        match self.phase {
-            Phase::Playing => true,
-            Phase::Start => {
-                self.phase = Phase::Playing;
-                self.needs_full_draw = true;
-                self.start = self.platform.ticks();
-                false
-            }
-            Phase::Done => {
-                self.position = Coord::default();
-                self.phase = Phase::Start;
-                false
-            }
-        }
-    }
-
-    pub fn try_move(&mut self, door: VisibleDoors) {
+    pub fn try_move(&mut self, door: VisibleDoors) -> bool {
         let cell = self.maze.get_cell(&self.position);
 
         let old_position = self.position;
@@ -212,11 +152,11 @@ impl<T: PlatformSpecific> Game<T> {
             }
         }
 
-        if self.is_win() {
-            self.phase = Phase::Done;
-            self.platform.play_victory_notes();
-            self.make_new_maze();
-        }
+        self.is_win()
+
+        // self.phase = Phase::Done;
+        // self.platform.play_victory_notes();
+        // self.make_new_maze();
     }
 
     pub fn turn_left(&mut self) {
@@ -241,22 +181,23 @@ impl<T: PlatformSpecific> Game<T> {
         }
     }
 
-    pub fn handle_command(&mut self, command: Command) {
+    pub fn handle_command(&mut self, command: Command) -> bool {
+        let mut is_win = false;
         match command {
             Command::MoveForward => {
-                self.try_move(VisibleDoors::Forward);
+                is_win = self.try_move(VisibleDoors::Forward);
             }
             Command::MoveRight => {
-                self.try_move(VisibleDoors::Right);
+                is_win = self.try_move(VisibleDoors::Right);
             }
             Command::MoveLeft => {
-                self.try_move(VisibleDoors::Left);
+                is_win = self.try_move(VisibleDoors::Left);
             }
             Command::MoveUp => {
-                self.try_move(VisibleDoors::Up);
+                is_win = self.try_move(VisibleDoors::Up);
             }
             Command::MoveDown => {
-                self.try_move(VisibleDoors::Down);
+                is_win = self.try_move(VisibleDoors::Down);
             }
             Command::TurnLeft => {
                 self.turn_left();
@@ -271,10 +212,62 @@ impl<T: PlatformSpecific> Game<T> {
                 self.show_direction_hint();
             }
         }
+
+        is_win
     }
 
     pub fn is_win(&self) -> bool {
         self.maze.is_win(&self.position)
+    }
+}
+
+enum Phase {
+    Start,
+    Playing(PlayingPhaseData),
+    Done,
+}
+
+pub struct Game<T: PlatformSpecific> {
+    platform: T,
+    phase: Phase,
+}
+
+impl<T: PlatformSpecific> Default for Game<T> {
+    fn default() -> Self {
+        Self {
+            platform: Default::default(),
+            phase: Phase::Start,
+        }
+    }
+}
+
+impl<T: PlatformSpecific> Game<T> {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn draw_start<D>(&self, display: &mut D) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = Rgb565>,
+    {
+        display.clear(Rgb565::BLACK)?;
+        draw_start(display)?;
+        Ok(())
+    }
+
+    pub fn draw<D>(&mut self, display: &mut D) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = Rgb565>,
+    {
+        match &mut self.phase {
+            Phase::Playing(playing_state) => {
+                playing_state.draw_playing(self.platform.ticks(), display)?
+            }
+            Phase::Done => self.draw_win(display)?,
+            Phase::Start => self.draw_start(display)?,
+        }
+
+        Ok(())
     }
 
     pub fn draw_win<D>(&self, display: &mut D) -> Result<(), D::Error>
@@ -286,12 +279,25 @@ impl<T: PlatformSpecific> Game<T> {
         Ok(())
     }
 
-    pub fn draw_start<D>(&self, display: &mut D) -> Result<(), D::Error>
-    where
-        D: DrawTarget<Color = Rgb565>,
-    {
-        display.clear(Rgb565::BLACK)?;
-        draw_start(display)?;
-        Ok(())
+    pub fn key_hit(&mut self) -> bool {
+        match self.phase {
+            Phase::Playing(_) => true,
+            Phase::Start => {
+                self.phase = Phase::Playing(PlayingPhaseData::new(self.platform.ticks()));
+                false
+            }
+            Phase::Done => {
+                self.phase = Phase::Start;
+                false
+            }
+        }
+    }
+
+    pub fn handle_command(&mut self, command: Command) {
+        if let Phase::Playing(playing_state) = &mut self.phase {
+            if playing_state.handle_command(command) {
+                self.phase = Phase::Done;
+            }
+        }
     }
 }

@@ -25,6 +25,12 @@ impl Direction {
     }
 }
 
+impl Default for Direction {
+    fn default() -> Self {
+        Self::North
+    }
+}
+
 impl From<Direction> for &'static str {
     fn from(direction: Direction) -> Self {
         match direction {
