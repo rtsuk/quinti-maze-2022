@@ -222,9 +222,9 @@ impl PlayingPhaseData {
 }
 
 enum Phase {
-    Start,
+    Start(bool),
     Playing(PlayingPhaseData),
-    Done,
+    Done(bool),
 }
 
 pub struct Game<T: PlatformSpecific> {
@@ -236,7 +236,7 @@ impl<T: PlatformSpecific> Default for Game<T> {
     fn default() -> Self {
         Self {
             platform: Default::default(),
-            phase: Phase::Start,
+            phase: Phase::Start(false),
         }
     }
 }
@@ -263,8 +263,18 @@ impl<T: PlatformSpecific> Game<T> {
             Phase::Playing(playing_state) => {
                 playing_state.draw_playing(self.platform.ticks(), display)?
             }
-            Phase::Done => self.draw_win(display)?,
-            Phase::Start => self.draw_start(display)?,
+            Phase::Done(drawn) => {
+                if !*drawn {
+                    *drawn = true;
+                    self.draw_win(display)?
+                }
+            }
+            Phase::Start(drawn) => {
+                if !*drawn {
+                    *drawn = true;
+                    self.draw_start(display)?
+                }
+            }
         }
 
         Ok(())
@@ -282,12 +292,12 @@ impl<T: PlatformSpecific> Game<T> {
     pub fn key_hit(&mut self) -> bool {
         match self.phase {
             Phase::Playing(_) => true,
-            Phase::Start => {
+            Phase::Start(_) => {
                 self.phase = Phase::Playing(PlayingPhaseData::new(self.platform.ticks()));
                 false
             }
-            Phase::Done => {
-                self.phase = Phase::Start;
+            Phase::Done(_) => {
+                self.phase = Phase::Start(false);
                 false
             }
         }
@@ -296,7 +306,7 @@ impl<T: PlatformSpecific> Game<T> {
     pub fn handle_command(&mut self, command: Command) {
         if let Phase::Playing(playing_state) = &mut self.phase {
             if playing_state.handle_command(command) {
-                self.phase = Phase::Done;
+                self.phase = Phase::Done(false);
             }
         }
     }
