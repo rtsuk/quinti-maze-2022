@@ -1,7 +1,7 @@
 use crate::{
     draw::{
         draw_bottom_door, draw_front_door, draw_left_door, draw_right_door, draw_room, draw_start,
-        draw_status, draw_top_door, draw_win,
+        draw_status, draw_top_door, draw_win, update_time,
     },
     maze::{
         find_path_to_exit, Coord, Direction, MazeGenerator, QuintiMaze, SolutionPath, VisibleDoors,
@@ -23,6 +23,19 @@ pub const NOTES: &[(u32, u64, u64)] = &[
 pub trait PlatformSpecific: Debug + Default {
     fn play_victory_notes(&mut self);
     fn ticks(&mut self) -> u64;
+}
+
+#[derive(Debug, PartialEq)]
+enum RedrawMode {
+    Time,
+    Status,
+    Full,
+}
+
+impl Default for RedrawMode {
+    fn default() -> Self {
+        Self::Full
+    }
 }
 
 pub enum Command {
@@ -50,7 +63,7 @@ struct Showing {
 struct PlayingPhaseData {
     maze: QuintiMaze,
     position: Coord,
-    needs_full_draw: bool,
+    next_redraw: RedrawMode,
     show_position: bool,
     direction_hint: Option<Direction>,
     path_to_exit: Option<SolutionPath>,
@@ -64,7 +77,6 @@ impl PlayingPhaseData {
         let mut generator = MazeGenerator::default();
         generator.generate(Some(ticks));
         Self {
-            needs_full_draw: true,
             maze: generator.take(),
             start: ticks,
             ..Default::default()
@@ -75,8 +87,7 @@ impl PlayingPhaseData {
     where
         D: DrawTarget<Color = Rgb565>,
     {
-        let needs_full_draw = self.needs_full_draw;
-        if needs_full_draw {
+        if self.next_redraw == RedrawMode::Full {
             self.showing = Default::default();
             display.clear(Rgb565::WHITE)?;
             draw_room(display)?;
@@ -114,15 +125,20 @@ impl PlayingPhaseData {
             self.showing.front = showing_front;
         }
 
-        draw_status(
-            display,
-            self.facing,
-            self.show_position.then_some(self.position),
-            self.direction_hint,
-            ticks - self.start,
-        )?;
+        let elapsed = ticks - self.start;
 
-        self.needs_full_draw = false;
+        if self.next_redraw != RedrawMode::Time {
+            draw_status(
+                display,
+                self.facing,
+                self.show_position.then_some(self.position),
+                self.direction_hint,
+                elapsed,
+            )?;
+        } else {
+            update_time(display, elapsed)?;
+        }
+        self.next_redraw = RedrawMode::Time;
 
         Ok(())
     }
@@ -139,6 +155,7 @@ impl PlayingPhaseData {
         }
 
         if self.position != old_position {
+            self.next_redraw = RedrawMode::Status;
             self.direction_hint = None;
             let path_to_exit = self.path_to_exit.take();
             if let Some(mut path_to_exit) = path_to_exit {
@@ -153,22 +170,21 @@ impl PlayingPhaseData {
         }
 
         self.is_win()
-
-        // self.phase = Phase::Done;
-        // self.platform.play_victory_notes();
-        // self.make_new_maze();
     }
 
     pub fn turn_left(&mut self) {
         self.facing = VisibleDoors::Left.direction(self.facing);
+        self.next_redraw = RedrawMode::Status;
     }
 
     pub fn turn_right(&mut self) {
         self.facing = VisibleDoors::Right.direction(self.facing);
+        self.next_redraw = RedrawMode::Status;
     }
 
     pub fn toggle_show_position(&mut self) {
         self.show_position = !self.show_position;
+        self.next_redraw = RedrawMode::Status;
     }
 
     pub fn show_direction_hint(&mut self) {
@@ -179,6 +195,7 @@ impl PlayingPhaseData {
             self.direction_hint = Some(self.position.direction_to(*next_position));
             self.path_to_exit = Some(path);
         }
+        self.next_redraw = RedrawMode::Status;
     }
 
     pub fn handle_command(&mut self, command: Command) -> bool {

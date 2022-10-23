@@ -361,6 +361,10 @@ where
     display.draw_iter(FIX_PIXELS)
 }
 
+const STATUS_TOP: u32 = FRONT_BOTTOM as u32;
+const STATUS_HEIGHT: u32 = SCREEN_SIZE.height - STATUS_TOP;
+const STATUS_CENTER_V: i32 = (SCREEN_SIZE.height - STATUS_HEIGHT / 2 + 5) as i32;
+
 pub fn draw_status<D>(
     display: &mut D,
     facing: Direction,
@@ -371,16 +375,13 @@ pub fn draw_status<D>(
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    let status_top = FRONT_BOTTOM as u32;
-    let status_height = SCREEN_SIZE.height - status_top;
-
     let style = PrimitiveStyleBuilder::new()
         .fill_color(Rgb565::BLACK)
         .build();
 
     Rectangle::new(
         Point::new(0, FRONT_BOTTOM),
-        Size::new(SCREEN_SIZE.width, status_height),
+        Size::new(SCREEN_SIZE.width, STATUS_HEIGHT),
     )
     .into_styled(style)
     .draw(display)?;
@@ -400,10 +401,6 @@ pub fn update_status<D>(
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    let status_top = FRONT_BOTTOM as u32;
-    let status_height = SCREEN_SIZE.height - status_top;
-    let status_center_v = (SCREEN_SIZE.height - status_height / 2 + 5) as i32;
-
     let style = MonoTextStyleBuilder::new()
         .font(&FONT_8X13_BOLD)
         .text_color(Rgb565::WHITE)
@@ -417,7 +414,7 @@ where
         fmt::write(&mut label, format_args!("{}[{}]", facing_str, hint_str)).expect("write");
         Text::with_alignment(
             &label,
-            Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
+            Point::new((SCREEN_SIZE.width / 2) as i32, STATUS_CENTER_V),
             style,
             Alignment::Center,
         )
@@ -425,27 +422,14 @@ where
     } else {
         Text::with_alignment(
             facing.into(),
-            Point::new((SCREEN_SIZE.width / 2) as i32, status_center_v),
+            Point::new((SCREEN_SIZE.width / 2) as i32, STATUS_CENTER_V),
             style,
             Alignment::Center,
         )
         .draw(display)?;
     }
 
-    let mut time_label = String::<32>::new();
-    let seconds = (elapsed + 999) / 1000;
-    fmt::write(
-        &mut time_label,
-        format_args!("Time: {:2}:{:02}", seconds / 60, seconds % 60),
-    )
-    .expect("write");
-    Text::with_alignment(
-        &time_label,
-        Point::new(5, status_center_v),
-        style,
-        Alignment::Left,
-    )
-    .draw(display)?;
+    update_time(display, elapsed)?;
 
     if let Some(position) = position {
         let mut label = String::<12>::new();
@@ -456,12 +440,40 @@ where
         .expect("format");
         Text::with_alignment(
             &label,
-            Point::new((SCREEN_SIZE.width - 5) as i32, status_center_v),
+            Point::new((SCREEN_SIZE.width - 5) as i32, STATUS_CENTER_V),
             style,
             Alignment::Right,
         )
         .draw(display)?;
     }
+
+    Ok(())
+}
+
+pub fn update_time<D>(display: &mut D, elapsed: u64) -> Result<(), D::Error>
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let style = MonoTextStyleBuilder::new()
+        .font(&FONT_8X13_BOLD)
+        .text_color(Rgb565::WHITE)
+        .background_color(Rgb565::BLACK)
+        .build();
+
+    let mut time_label = String::<32>::new();
+    let seconds = (elapsed + 999) / 1000;
+    fmt::write(
+        &mut time_label,
+        format_args!("Time: {:2}:{:02}", seconds / 60, seconds % 60),
+    )
+    .expect("write");
+    let time = Text::with_alignment(
+        &time_label,
+        Point::new(5, STATUS_CENTER_V),
+        style,
+        Alignment::Left,
+    );
+    time.draw(display)?;
 
     Ok(())
 }
