@@ -48,15 +48,19 @@ fn main() -> ! {
     pwm.disable(Channel::_0);
 
     let mut delayer = Delay::new(core.SYST, &mut clocks);
-    for (freq, duration, delay) in NOTES {
-        rprintln!("freq, duration, delay = {}, {}, {}", freq, duration, delay);
-        delayer.delay_ms(*delay as u32);
-        pwm.set_period(freq.hz());
+    for note in NOTES {
+        rprintln!(
+            "freq, duration, delay = {}, {}, {}",
+            note.frequency,
+            note.duration,
+            note.delay
+        );
+        delayer.delay_ms(note.delay as u32);
+        pwm.set_period((note.frequency as u32).hz());
         let max_duty = pwm.get_max_duty();
-        rprintln!("max_duty = {}", max_duty);
         pwm.set_duty(Channel::_0, max_duty / 2);
         pwm.enable(Channel::_0);
-        delayer.delay_ms(*duration as u32);
+        delayer.delay_ms(note.duration as u32);
         pwm.disable(Channel::_0);
     }
     pwm.disable(Channel::_0);

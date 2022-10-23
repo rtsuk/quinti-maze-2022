@@ -44,11 +44,11 @@ impl Debug for SimPlatform {
 impl PlatformSpecific for SimPlatform {
     fn play_victory_notes(&mut self) {
         let sink = Sink::try_new(&self.stream_handle).expect("new sink");
-        for (freq, duration, delay) in NOTES {
-            let source = SineWave::new(*freq)
-                .take_duration(Duration::from_millis(*duration))
+        for note in NOTES {
+            let source = SineWave::new(note.frequency as u32)
+                .take_duration(Duration::from_millis(note.duration as u64))
                 .amplify(0.20)
-                .delay(Duration::from_millis(*delay));
+                .delay(Duration::from_millis(note.delay));
             sink.append(source);
         }
         sink.sleep_until_end();

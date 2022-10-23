@@ -10,14 +10,30 @@ use crate::{
 use core::fmt::Debug;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 
-pub const NOTES: &[(u32, u64, u64)] = &[
-    (1000, 256, 0),
-    (1000, 128, 50),
-    (1000, 128, 50),
-    (1333, 169, 50),
-    (1000, 169, 50),
-    (1333, 169, 50),
-    (1667, 653, 50),
+pub struct Note {
+    pub duration: u32,
+    pub frequency: u64,
+    pub delay: u64,
+}
+
+impl Note {
+    pub const fn new(frequency: u64, duration: u32, delay: u64) -> Self {
+        Self {
+            duration,
+            frequency,
+            delay,
+        }
+    }
+}
+
+pub const NOTES: &[Note] = &[
+    Note::new(1000, 256, 0),
+    Note::new(1000, 128, 50),
+    Note::new(1000, 128, 50),
+    Note::new(1333, 169, 50),
+    Note::new(1000, 169, 50),
+    Note::new(1333, 169, 50),
+    Note::new(1667, 653, 50),
 ];
 
 pub trait PlatformSpecific: Debug + Default {
@@ -79,6 +95,7 @@ impl PlayingPhaseData {
         Self {
             maze: generator.take(),
             start: ticks,
+            position: Coord { x: 4, y: 4, z: 4 },
             ..Default::default()
         }
     }
@@ -278,18 +295,19 @@ impl<T: PlatformSpecific> Game<T> {
     {
         match &mut self.phase {
             Phase::Playing(playing_state) => {
-                playing_state.draw_playing(self.platform.ticks(), display)?
+                playing_state.draw_playing(self.platform.ticks(), display)?;
             }
             Phase::Done(drawn) => {
                 if !*drawn {
                     *drawn = true;
-                    self.draw_win(display)?
+                    self.draw_win(display)?;
+                    self.platform.play_victory_notes();
                 }
             }
             Phase::Start(drawn) => {
                 if !*drawn {
                     *drawn = true;
-                    self.draw_start(display)?
+                    self.draw_start(display)?;
                 }
             }
         }

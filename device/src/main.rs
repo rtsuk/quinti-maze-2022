@@ -22,13 +22,16 @@ mod app {
     use bsp::{hal, pin_alias};
     use core::time::Duration;
     use display_interface_spi::SPIInterface;
+
     use hal::clock::GenericClockController;
     use hal::gpio::{DynPin, Pin, F, PA14};
     use hal::pac::Peripherals;
     use hal::prelude::*;
     use hal::pwm::{Channel, TCC2Pinout, Tcc2Pwm};
+
     use ili9341::{DisplaySize240x320, Ili9341, Orientation};
-    use quinti_maze::game::{Command, Game, PlatformSpecific};
+
+    use quinti_maze::game::{Command, Game, PlatformSpecific, NOTES};
     use rtt_target::{rprintln, rtt_init_print};
     use systick_monotonic::*;
 
@@ -39,7 +42,7 @@ mod app {
 
     impl PlatformSpecific for DevicePlatform {
         fn play_victory_notes(&mut self) {
-            beep::spawn_after(500.millis(), true).ok();
+            play_victory_notes::spawn().ok();
         }
 
         fn ticks(&mut self) -> u64 {
@@ -47,10 +50,8 @@ mod app {
         }
     }
 
-    /// Worlds worst delay function.
-    #[inline(always)]
     pub fn delay_ms(ms: u32) {
-        const CYCLES_PER_MILLIS: u32 = SYSCLK_HZ / 1000;
+        const CYCLES_PER_MILLIS: u32 = SYSCLK_HZ / 1000 * 2 / 3;
         cortex_m::asm::delay(CYCLES_PER_MILLIS.saturating_mul(ms));
     }
 
@@ -132,6 +133,8 @@ mod app {
         // Start the blink task
         blink::spawn().unwrap();
 
+        let gclk0 = clocks.gclk0();
+
         let sercom = peripherals.SERCOM1;
         let spi = bsp::spi_master(&mut clocks, 4.mhz(), sercom, mclk, sck, mosi, miso);
         let spi_iface = SPIInterface::new(spi, lcd_dc, lcd_cs);
@@ -174,7 +177,6 @@ mod app {
         ];
 
         let buzzer = pins.d4.into_alternate::<F>();
-        let gclk0 = clocks.gclk0();
 
         let mut pwm = Tcc2Pwm::new(
             &clocks.tcc2_tcc3(&gclk0).unwrap(),
@@ -218,13 +220,20 @@ mod app {
     }
 
     #[task(priority = 2, local = [pwm])]
-    fn beep(cx: beep::Context, start: bool) {
-        if start {
-            cx.local.pwm.enable(Channel::_0);
-        } else {
-            cx.local.pwm.disable(Channel::_0);
+    fn play_victory_notes(cx: play_victory_notes::Context) {
+        let pwm = cx.local.pwm;
+        pwm.disable(Channel::_0);
+
+        for note in NOTES {
+            delay_ms(note.delay as u32);
+            pwm.set_period((note.frequency as u32).hz());
+            let max_duty = pwm.get_max_duty();
+            pwm.set_duty(Channel::_0, max_duty / 2);
+            pwm.enable(Channel::_0);
+            delay_ms(note.duration as u32);
+            pwm.disable(Channel::_0);
         }
-        beep::spawn_after(200.millis(), !start).ok();
+        pwm.disable(Channel::_0);
     }
 
     #[task(priority = 1, local = [rows, cols, debouncers], shared = [game])]
