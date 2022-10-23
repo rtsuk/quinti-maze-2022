@@ -95,7 +95,6 @@ impl PlayingPhaseData {
         Self {
             maze: generator.take(),
             start: ticks,
-            position: Coord { x: 4, y: 4, z: 4 },
             ..Default::default()
         }
     }
