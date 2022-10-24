@@ -38,7 +38,7 @@ mod app {
 
     impl PlatformSpecific for DevicePlatform {
         fn play_victory_notes(&mut self) {
-            play_victory_notes::spawn().ok();
+            play_note_with_delay::spawn(0).ok();
         }
 
         fn ticks(&mut self) -> u64 {
@@ -85,12 +85,12 @@ mod app {
         cols: [DynPin; 3],
         rows: [DynPin; 4],
         debouncers: [KeyDebouncer; 12],
-        pwm: Tcc2Pwm<PA14, hal::gpio::Alternate<F>>,
     }
 
     #[shared]
     struct Shared {
         game: Game<DevicePlatform>,
+        pwm: Tcc2Pwm<PA14, hal::gpio::Alternate<F>>,
     }
 
     #[monotonic(binds = SysTick, default = true)]
@@ -193,13 +193,12 @@ mod app {
         render_game::spawn().unwrap();
 
         (
-            Shared { game },
+            Shared { game, pwm },
             Local {
                 lcd,
                 cols,
                 rows,
                 debouncers,
-                pwm,
             },
             init::Monotonics(mono),
         )
@@ -213,23 +212,6 @@ mod app {
             }
         });
         render_game::spawn_after(500.millis()).ok();
-    }
-
-    #[task(priority = 2, local = [pwm])]
-    fn play_victory_notes(cx: play_victory_notes::Context) {
-        let pwm = cx.local.pwm;
-        pwm.disable(Channel::_0);
-
-        for note in NOTES {
-            delay_ms(note.delay as u32);
-            pwm.set_period((note.frequency as u32).hz());
-            let max_duty = pwm.get_max_duty();
-            pwm.set_duty(Channel::_0, max_duty / 2);
-            pwm.enable(Channel::_0);
-            delay_ms(note.duration as u32);
-            pwm.disable(Channel::_0);
-        }
-        pwm.disable(Channel::_0);
     }
 
     #[task(priority = 1, local = [rows, cols, debouncers], shared = [game])]
@@ -294,5 +276,39 @@ mod app {
             row.into_pull_up_input();
         }
         scan::spawn_after(10.millis()).ok();
+    }
+
+    #[task(priority = 2)]
+    fn play_note_with_delay(_cx: play_note_with_delay::Context, index: usize) {
+        if index < NOTES.len() {
+            let note = &NOTES[index];
+            if note.delay > 0 {
+                start_note::spawn_after(note.delay.millis(), index).ok();
+            } else {
+                start_note::spawn(index).ok();
+            }
+        }
+    }
+
+    #[task(priority = 2, shared = [pwm])]
+    fn start_note(mut cx: start_note::Context, index: usize) {
+        if index < NOTES.len() {
+            let note = &NOTES[index];
+            cx.shared.pwm.lock(|pwm| {
+                pwm.set_period((note.frequency as u32).hz());
+                let max_duty = pwm.get_max_duty();
+                pwm.set_duty(Channel::_0, max_duty / 2);
+                pwm.enable(Channel::_0);
+            });
+            end_note::spawn_after((note.duration as u64).millis(), index).ok();
+        }
+    }
+
+    #[task(priority = 2, shared = [pwm])]
+    fn end_note(mut cx: end_note::Context, index: usize) {
+        cx.shared.pwm.lock(|pwm| {
+            pwm.disable(Channel::_0);
+        });
+        play_note_with_delay::spawn_after(10.millis(), index + 1).ok();
     }
 }

@@ -10,6 +10,7 @@ use crate::{
 use core::fmt::Debug;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 
+#[derive(Debug)]
 pub struct Note {
     pub duration: u32,
     pub frequency: u64,
@@ -95,7 +96,7 @@ impl PlayingPhaseData {
         generator.generate(Some(ticks));
         Self {
             maze: generator.take(),
-            #[cfg(feature="easy")]
+            #[cfg(feature = "easy")]
             position: Coord { x: 4, y: 4, z: 4 },
             start: ticks,
             ..Default::default()
