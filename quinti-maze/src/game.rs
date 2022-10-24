@@ -95,6 +95,7 @@ impl PlayingPhaseData {
         generator.generate(Some(ticks));
         Self {
             maze: generator.take(),
+            #[cfg(feature="easy")]
             position: Coord { x: 4, y: 4, z: 4 },
             start: ticks,
             ..Default::default()

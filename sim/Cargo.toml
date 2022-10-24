@@ -3,6 +3,9 @@ name = "sim"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+easy = [ "quinti-maze/easy" ]
+
 [dependencies]
 embedded-graphics = "0.7.1"
 embedded-graphics-simulator = "0.3.0"
