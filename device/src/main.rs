@@ -1,7 +1,3 @@
-//! Uses RTIC with the RTC as time source to blink an LED.
-//!
-//! The idle task is sleeping the CPU, so in practice this gives similar power
-//! figure as the "sleeping_timer_rtc" example.
 #![no_std]
 #![no_main]
 
@@ -19,7 +15,7 @@ const KEYS: &[&[char]] = &[
 #[rtic::app(device = bsp::pac, peripherals = true, dispatchers = [EVSYS_0, EVSYS_1, EVSYS_2])]
 mod app {
     use super::*;
-    use bsp::{hal, pin_alias};
+    use bsp::hal;
     use core::time::Duration;
     use display_interface_spi::SPIInterface;
 
@@ -51,7 +47,7 @@ mod app {
     }
 
     pub fn delay_ms(ms: u32) {
-        const CYCLES_PER_MILLIS: u32 = SYSCLK_HZ / 1000 * 2 / 3;
+        const CYCLES_PER_MILLIS: u32 = SYSCLK_HZ / 1000;
         cortex_m::asm::delay(CYCLES_PER_MILLIS.saturating_mul(ms));
     }
 
@@ -85,7 +81,6 @@ mod app {
 
     #[local]
     struct Local {
-        red_led: bsp::RedLed,
         lcd: Ili9341<SPIInterface<bsp::Spi, LcdCsPin, LcdDcPin>, LcdResetPin>,
         cols: [DynPin; 3],
         rows: [DynPin; 4],
@@ -105,15 +100,13 @@ mod app {
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         rtt_init_print!();
 
-        delay_ms(100);
-
-        let _ = monotonic_millis();
-
+        // Set up clock that drives RTIC
         let mono = Systick::new(cx.core.SYST, 120_000_000);
+
         let mut peripherals: Peripherals = cx.device;
         let pins = bsp::Pins::new(peripherals.PORT);
-        let red_led: bsp::RedLed = pin_alias!(pins.red_led).into();
 
+        // Initialize MC clocks
         let mut clocks = GenericClockController::with_internal_32kosc(
             peripherals.GCLK,
             &mut peripherals.MCLK,
@@ -122,6 +115,9 @@ mod app {
             &mut peripherals.NVMCTRL,
         );
 
+        let gclk0 = clocks.gclk0();
+
+        // Set up LCD driver
         let sck = pins.sck;
         let miso = pins.miso;
         let mosi = pins.mosi;
@@ -129,11 +125,6 @@ mod app {
 
         let lcd_dc = pins.d10.into_push_pull_output();
         let lcd_cs = pins.d9.into_push_pull_output();
-
-        // Start the blink task
-        blink::spawn().unwrap();
-
-        let gclk0 = clocks.gclk0();
 
         let sercom = peripherals.SERCOM1;
         let spi = bsp::spi_master(&mut clocks, 4.mhz(), sercom, mclk, sck, mosi, miso);
@@ -149,6 +140,7 @@ mod app {
         )
         .unwrap();
 
+        // Set up the GPIOs for scanning the matrix keypad
         let cols = [pins.a2.into(), pins.a0.into(), pins.a4.into()];
         let mut rows: [DynPin; 4] = [
             pins.a1.into(),
@@ -176,6 +168,7 @@ mod app {
             debounce_stateful_3(false),
         ];
 
+        // Set up the peizo speaker
         let buzzer = pins.d4.into_alternate::<F>();
 
         let mut pwm = Tcc2Pwm::new(
@@ -190,14 +183,18 @@ mod app {
         pwm.set_duty(Channel::_0, max_duty / 4);
         pwm.disable(Channel::_0);
 
+        // Create the game
         let game = Game::new();
 
+        // start the keypad spawning task
         scan::spawn().unwrap();
+
+        // Start the render task
+        render_game::spawn().unwrap();
 
         (
             Shared { game },
             Local {
-                red_led,
                 lcd,
                 cols,
                 rows,
@@ -208,15 +205,14 @@ mod app {
         )
     }
 
-    #[task(local = [lcd, red_led], shared = [game])]
-    fn blink(mut cx: blink::Context) {
+    #[task(local = [lcd], shared = [game])]
+    fn render_game(mut cx: render_game::Context) {
         cx.shared.game.lock(|game| {
             if let Err(e) = game.draw(cx.local.lcd) {
                 rprintln!("err = {:?}", e);
             }
-            cx.local.red_led.toggle().unwrap();
-            blink::spawn_after(500.millis()).ok();
         });
+        render_game::spawn_after(500.millis()).ok();
     }
 
     #[task(priority = 2, local = [pwm])]

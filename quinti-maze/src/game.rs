@@ -54,6 +54,7 @@ impl Default for RedrawMode {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Command {
     MoveForward,
     MoveLeft,
@@ -94,6 +95,7 @@ impl PlayingPhaseData {
         generator.generate(Some(ticks));
         Self {
             maze: generator.take(),
+            position: Coord { x: 4, y: 4, z: 4 },
             start: ticks,
             ..Default::default()
         }
