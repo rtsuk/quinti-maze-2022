@@ -3,7 +3,7 @@
 To run Quinti-Maze on a Mac, Windows or (hopefully) Linux computer:
 
 1. [Install Rust](https://www.rust-lang.org/tools/install)
-1. [Install the SDL2 libraries)(https://github.com/Rust-SDL2/rust-sdl2#sdl20-development-libraries)
+1. [Install the SDL2 libraries](https://github.com/Rust-SDL2/rust-sdl2#sdl20-development-libraries)
 1. cd to `quinti-maze-2022/sim`
 1. `cargo run --release`
 
